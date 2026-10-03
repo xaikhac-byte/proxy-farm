@@ -1,0 +1,24 @@
+name: ci
+on:
+  push:
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Shell syntax + shellcheck
+        run: |
+          sh -n node/entrypoint.sh node/drivers/*.sh run.sh tests/*.sh
+          shellcheck -S warning -s sh -e SC2034 node/entrypoint.sh node/drivers/*.sh tests/*.sh
+      - name: Python compile + unit tests
+        run: |
+          python3 -m py_compile manager/farm.py manager/providers.py
+          python3 -c "import json; [json.load(open(f)) for f in ('manager/presets.json','manager/countries.json')]"
+          python3 -m unittest discover -s tests -v
+      - name: OpenVPN sanitizer
+        run: sh tests/test_openvpn_sanitize.sh
+      - name: Build images
+        run: |
+          docker build -t proxy-farm-node node
+          docker build -t proxy-farm-manager manager
