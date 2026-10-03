@@ -218,6 +218,9 @@ check() {
 }
 # Mark the current gateway IP as silent; back off only if the location has no other IP.
 mark_bad() {
+  # A rejected account or untrusted certificate is not the gateway's fault: another IP
+  # of the same provider would fail the same way, so just back off.
+  case "$(cat /run/why 2>/dev/null)" in auth|cert) echo $(( FAILS + 1 )) > /run/fails; return 0 ;; esac
   echo "$(cat /run/server_ip) $(date +%s)" >> "$BADIPS"
   cut -d' ' -f1 "$BADIPS" > /run/badlist
   if [ -n "$(grep -vxF -f /run/badlist /run/candidates 2>/dev/null)" ]; then
