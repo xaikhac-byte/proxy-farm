@@ -399,6 +399,87 @@ body.flat .drawer,body.flat .scrim,body.flat .modal .box{transition:none}
   .st .lbl{white-space:nowrap}
   .rowact{justify-content:flex-end}
 }
+/* ---- simple mode: first-run wizard + easy dashboard ---- */
+body.simple .app{display:none}
+body:not(.simple) #simple{display:none}
+#simple{min-height:100vh;font-size:16px}
+.sx-top{display:flex;align-items:center;gap:12px;padding:16px 22px;border-bottom:1px solid var(--line);background:var(--panel)}
+.sx-top .brand{width:34px;height:34px}
+.sx-top h1{font-family:var(--fd);font-size:20px;margin:0;flex:1}
+.sx-top h1 small{display:block;font-family:var(--ff);font-size:12.5px;font-weight:500;color:var(--mut)}
+.sx-wrap{max-width:880px;margin:0 auto;padding:22px 18px 80px}
+.sx-steps{display:flex;gap:8px;margin:0 0 22px;flex-wrap:wrap}
+.sx-steps button{flex:1;min-width:150px;display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;
+  border:1px solid var(--line);background:var(--panel);color:var(--mut);font:inherit;font-size:14px;font-weight:600;cursor:pointer;text-align:left}
+.sx-steps button b{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--panel-2);color:var(--dim);flex:none}
+.sx-steps button[aria-current="step"]{border-color:var(--acc-line);color:var(--tx);background:var(--acc-soft)}
+.sx-steps button[aria-current="step"] b,.sx-steps button.done b{background:var(--acc);color:var(--acc-ink)}
+.sx-steps button:disabled{cursor:default;opacity:.6}
+.sx-card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px;box-shadow:var(--sh-2)}
+.sx-card h2{font-family:var(--fd);font-size:22px;margin:0 0 6px}
+.sx-lead{color:var(--dim);margin:0 0 18px;line-height:1.6}
+.sx-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px}
+.sx-prov{display:flex;flex-direction:column;gap:6px;min-height:104px;padding:16px;border-radius:14px;border:2px solid var(--line);
+  background:var(--panel-2);color:var(--tx);font:inherit;text-align:left;cursor:pointer}
+.sx-prov:hover{border-color:var(--acc-line)}
+.sx-prov[aria-pressed="true"]{border-color:var(--acc);background:var(--acc-soft)}
+.sx-prov .sx-nm{font-size:17px;font-weight:700}
+.sx-prov .sx-tag{font-size:12.5px;color:var(--mut);line-height:1.45}
+.sx-prov .sx-tag.easy{color:var(--ok)}
+.sx-prov.off{opacity:.55}
+.sx-btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:50px;padding:0 24px;border-radius:12px;
+  font:inherit;font-size:16.5px;font-weight:700;cursor:pointer;border:1px solid var(--line-2);background:var(--panel-2);color:var(--tx)}
+.sx-btn svg{width:19px;height:19px}
+.sx-btn.go{background:linear-gradient(150deg,var(--acc),var(--acc-2));border-color:transparent;color:var(--acc-ink)}
+.sx-btn.sm{min-height:42px;font-size:15px;padding:0 16px}
+.sx-btn:disabled{opacity:.5;cursor:default}
+.sx-nav{display:flex;gap:10px;justify-content:space-between;align-items:center;margin-top:22px;flex-wrap:wrap}
+.sx-how{border-left:4px solid var(--info);background:var(--panel-2);border-radius:10px;padding:14px 16px;margin:0 0 18px;line-height:1.65}
+.sx-how b{color:var(--tx)}
+.sx-how a{color:var(--acc);font-weight:600}
+.sx-f{display:flex;flex-direction:column;gap:6px;margin:0 0 14px}
+.sx-f label{font-weight:600}
+.sx-f input[type=text],.sx-f input[type=password]{font-size:16px;padding:12px 14px;border-radius:10px}
+.sx-f .hint{font-size:13.5px;color:var(--mut);line-height:1.5}
+.sx-drop{border:2px dashed var(--line-2);border-radius:14px;padding:22px;text-align:center;cursor:pointer;color:var(--dim);background:var(--panel-2)}
+.sx-drop.over{border-color:var(--acc);background:var(--acc-soft)}
+.sx-drop b{display:block;color:var(--tx);font-size:16px;margin-bottom:4px}
+.sx-files{margin-top:8px;font-size:14px;color:var(--ok)}
+.sx-err{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--bad);background:var(--bad-soft);color:var(--tx);
+  border-radius:12px;padding:12px 14px;margin:14px 0 0;line-height:1.55}
+.sx-err b{color:var(--bad)}
+.sx-busy{display:flex;align-items:center;gap:10px;color:var(--dim);margin-top:14px}
+.sx-spin{width:20px;height:20px;border-radius:50%;border:3px solid var(--line-2);border-top-color:var(--acc);animation:sxspin 1s linear infinite}
+@keyframes sxspin{to{transform:rotate(360deg)}}
+.sx-search{width:100%;font-size:16px;padding:12px 14px;border-radius:10px;margin:0 0 12px}
+.sx-cc{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px;max-height:430px;overflow:auto;padding:2px}
+.sx-cc label{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:10px;border:1px solid var(--line);background:var(--panel-2);cursor:pointer}
+.sx-cc label:has(input:checked){border-color:var(--acc);background:var(--acc-soft)}
+.sx-cc input{width:20px;height:20px;accent-color:var(--acc)}
+.sx-cc .sx-ct{display:flex;flex-direction:column;line-height:1.3}
+.sx-cc .sx-ct small{color:var(--mut);font-size:12.5px}
+.sx-fl{width:26px;height:18px;border-radius:3px;object-fit:cover;flex:none;background:var(--panel);font-size:10px;display:inline-grid;place-items:center;color:var(--mut)}
+.sx-note{color:var(--mut);font-size:14px;line-height:1.55;margin:10px 0 0}
+.sx-ports{display:flex;flex-direction:column;gap:12px}
+.sx-port{border:1px solid var(--line);border-radius:14px;padding:14px 16px;background:var(--panel-2);display:grid;
+  grid-template-columns:auto 1fr auto;gap:6px 14px;align-items:center}
+.sx-port .sx-who{display:flex;align-items:center;flex-wrap:wrap;gap:4px 10px;font-weight:700;font-size:17px}
+.sx-port .sx-who>*{white-space:nowrap}
+.sx-port.fix{grid-template-columns:auto 1fr}
+.sx-port.fix .sx-acts{grid-column:1 / -1;justify-content:flex-start}
+.sx-port .sx-st{grid-column:1 / -1;font-size:14.5px;line-height:1.55;color:var(--dim)}
+.sx-port .sx-st.ok{color:var(--ok)} .sx-port .sx-st.bad{color:var(--bad)} .sx-port .sx-st.warn{color:var(--warn)}
+.sx-port .sx-ep{font-family:var(--fm);font-size:13.5px;color:var(--mut)}
+.sx-port .sx-acts{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.sx-port .sx-res{grid-column:1 / -1;font-size:14px;border-radius:10px;padding:10px 12px;background:var(--panel)}
+.sx-pill{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;padding:3px 10px;border-radius:99px}
+.sx-pill.ok{background:var(--ok-soft);color:var(--ok)} .sx-pill.warn{background:var(--warn-soft);color:var(--warn)}
+.sx-pill.bad{background:var(--bad-soft);color:var(--bad)} .sx-pill.off{background:var(--panel);color:var(--mut)}
+.sx-use{margin-top:18px;border-radius:12px;background:var(--panel-2);padding:14px 16px;line-height:1.7}
+.sx-use code{font-family:var(--fm);font-size:13.5px;background:var(--panel);padding:2px 7px;border-radius:6px;user-select:all}
+.sx-low{display:block;margin:0 0 16px;padding:10px 14px;border-radius:10px;background:var(--warn-soft);color:var(--tx);font-size:14px}
+@media (max-width:640px){.sx-port,.sx-port.fix{grid-template-columns:1fr}.sx-port .sx-acts{justify-content:flex-start}.sx-steps button{min-width:46%}}
+body.simple .drawer,body.simple .scrim{display:none!important}
 </style>
 </head>
 <body>
@@ -423,8 +504,88 @@ body.flat .drawer,body.flat .scrim,body.flat .modal .box{transition:none}
 <symbol id="ic-file" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></symbol>
 <symbol id="ic-trash" viewBox="0 0 24 24"><path d="M4 7h16"/><path d="M9 7V5h6v2"/><path d="M6.5 7l.8 12a2 2 0 0 0 2 1.9h5.4a2 2 0 0 0 2-1.9L17.5 7"/></symbol>
 <symbol id="ic-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 2"/></symbol>
+<symbol id="ic-home" viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v10h13V10"/><path d="M10 20v-5h4v5"/></symbol>
 <symbol id="ic-bolt" viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></symbol>
 </svg>
+
+<div id="simple">
+  <div class="sx-top">
+    <div class="brand"><svg><use href="#ic-relay"/></svg></div>
+    <h1>Proxy Farm<small>Biến tài khoản VPN thành proxy riêng cho từng quốc gia</small></h1>
+    <button class="sx-btn sm" id="sxAdvanced" title="Giao diện đầy đủ cho người dùng quen tay"><svg class="i"><use href="#ic-gear"/></svg><span>Nâng cao</span></button>
+  </div>
+  <div class="sx-wrap">
+    <nav class="sx-steps" id="sxSteps" aria-label="Các bước">
+      <button data-s="1"><b>1</b>Chọn nhà VPN</button>
+      <button data-s="2"><b>2</b>Nhập tài khoản</button>
+      <button data-s="3"><b>3</b>Chọn quốc gia</button>
+      <button data-s="4"><b>4</b>Bật &amp; dùng</button>
+    </nav>
+
+    <section class="sx-card" id="sx1">
+      <h2>Bạn đang dùng VPN nào?</h2>
+      <p class="sx-lead">Bấm vào tên nhà cung cấp VPN bạn đã mua. Những ô ghi <b style="color:var(--ok)">“Dễ nhất”</b> chỉ cần
+        nhập tên đăng nhập và mật khẩu, Proxy Farm tự làm phần còn lại.</p>
+      <div class="sx-grid" id="sxProvs"></div>
+    </section>
+
+    <section class="sx-card" id="sx2" hidden>
+      <h2 id="sx2Title">Nhập tài khoản</h2>
+      <div class="sx-how" id="sxHow"></div>
+      <div class="seg" id="sxProto" hidden></div>
+      <div id="sxUP">
+        <div class="sx-f"><label for="sxUser" id="sxUserL">Tên đăng nhập dịch vụ</label>
+          <input type="text" id="sxUser" autocomplete="off" spellcheck="false"></div>
+        <div class="sx-f"><label for="sxPass">Mật khẩu dịch vụ</label>
+          <input type="password" id="sxPass" autocomplete="new-password">
+          <span class="hint" id="sxPassHint"></span></div>
+      </div>
+      <div id="sxFileWrap" class="sx-f">
+        <label id="sxFileL">File cấu hình</label>
+        <div class="sx-drop" id="sxDrop" role="button" tabindex="0">
+          <b id="sxDropT">Bấm để chọn file, hoặc kéo thả vào đây</b>
+          <span id="sxDropS"></span>
+          <input type="file" id="sxFile" multiple hidden>
+        </div>
+        <div class="sx-files" id="sxFiles"></div>
+      </div>
+      <div id="sxErr2"></div>
+      <div class="sx-nav">
+        <button class="sx-btn" data-go="1">← Quay lại</button>
+        <button class="sx-btn go" id="sxSave">Tiếp tục →</button>
+      </div>
+    </section>
+
+    <section class="sx-card" id="sx3" hidden>
+      <h2>Muốn có proxy ở những nước nào?</h2>
+      <p class="sx-lead">Mỗi nước bạn chọn sẽ thành <b>một proxy riêng</b>. Đã chọn sẵn vài nước phổ biến — bỏ hoặc thêm tuỳ ý.</p>
+      <div class="sx-low" id="sxLow" hidden></div>
+      <input class="sx-search" id="sxFind" placeholder="Gõ tên nước để tìm, ví dụ: Nhật, Singapore…">
+      <div class="sx-cc" id="sxCC"></div>
+      <p class="sx-note" id="sxPicked"></p>
+      <div id="sxErr3"></div>
+      <div class="sx-nav">
+        <button class="sx-btn" data-go="2">← Quay lại</button>
+        <button class="sx-btn go" id="sxStart"><svg class="i"><use href="#ic-power"/></svg><span>Bật proxy</span></button>
+      </div>
+    </section>
+
+    <section class="sx-card" id="sx4" hidden>
+      <h2>Proxy của bạn</h2>
+      <p class="sx-lead" id="sx4Lead">Mỗi dòng là một proxy. Khi thấy <span class="sx-pill ok">Đang hoạt động</span> là dùng được.
+        Lần đầu kết nối thường mất 10–60 giây.</p>
+      <div class="sx-ports" id="sxPorts"></div>
+      <div class="sx-use" id="sxUse"></div>
+      <div class="sx-nav">
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="sx-btn" id="sxMore"><svg class="i"><use href="#ic-plus"/></svg><span>Thêm nước khác</span></button>
+          <button class="sx-btn" data-go="1">Đổi / thêm nhà VPN</button>
+        </div>
+        <button class="sx-btn go" id="sxCopyAll"><svg class="i"><use href="#ic-copy"/></svg><span>Chép tất cả proxy</span></button>
+      </div>
+    </section>
+  </div>
+</div>
 
 <div class="app">
   <aside class="rail">
@@ -432,6 +593,7 @@ body.flat .drawer,body.flat .scrim,body.flat .modal .box{transition:none}
     <button class="rail-btn on" title="Proxy"><svg class="i" style="width:20px;height:20px"><use href="#ic-globe"/></svg></button>
     <button class="rail-btn" id="openProv" title="Nhà cung cấp VPN"><svg class="i" style="width:19px;height:19px"><use href="#ic-plug"/></svg></button>
     <button class="rail-btn" id="openSet" title="Cài đặt"><svg class="i" style="width:19px;height:19px"><use href="#ic-gear"/></svg></button>
+    <button class="rail-btn" id="toSimple" title="Chế độ đơn giản (hướng dẫn từng bước)"><svg class="i" style="width:19px;height:19px"><use href="#ic-home"/></svg></button>
     <div class="rail-sp"></div>
     <div class="health" id="health" title="Trạng thái nền"></div>
     <button class="rail-btn" id="theme" title="Đổi sáng / tối"><svg class="i" style="width:19px;height:19px"><use href="#ic-moon" id="themeIcon"/></svg></button>
@@ -680,6 +842,16 @@ body.flat .drawer,body.flat .scrim,body.flat .modal .box{transition:none}
       </div>
     </div>
     <div class="sect">
+      <h4>Máy yếu</h4>
+      <label class="topt" style="font-size:13.5px;margin-bottom:10px"><input type="checkbox" id="sLow"> Chế độ máy yếu — giới hạn RAM/CPU mỗi cổng, ghi ít log</label>
+      <div class="grid2">
+        <div class="field mono"><label for="sMax">Số cổng bật cùng lúc tối đa</label><input type="number" id="sMax" min="0">
+          <span class="hint">0 = không giới hạn. Máy 4 GB RAM: nên để 3.</span></div>
+        <div class="field mono"><label for="sMem">RAM tối đa mỗi cổng (MB)</label><input type="number" id="sMem" min="32">
+          <span class="hint">Chỉ áp dụng ở chế độ máy yếu. Mỗi cổng thường dùng 13–20 MB.</span></div>
+      </div>
+    </div>
+    <div class="sect">
       <h4>Webhook xoay IP</h4>
       <div class="cmd"><code id="hookUrl">—</code>
         <button class="btn ghost sm" id="copyHook"><svg class="i"><use href="#ic-copy"/></svg><span>Chép</span></button></div>
@@ -780,7 +952,7 @@ function quotaLeft(k){ const p=provByKey(k); if(!p||!p.limit)return Infinity; re
 function refusedMsg(refused){
   if(!refused||!refused.length)return '';
   const by={}; for(const r of refused)(by[r.provider]=by[r.provider]||{n:0,limit:r.limit}).n++;
-  return Object.entries(by).map(([k,v])=>`${v.n} cổng ${k.toUpperCase()} (đã đủ ${v.limit})`).join(', ');
+  return Object.entries(by).map(([k,v])=>k==='_all'?`${v.n} cổng (giới hạn ${v.limit} cổng cùng lúc)`:`${v.n} cổng ${k.toUpperCase()} (đã đủ ${v.limit})`).join(', ');
 }
 async function loadLocs(){LOCS=await j('/api/locations');HAS_TARGETS=LOCS.locations.length>0;await loadProvs()}
 function renderPick(){
@@ -1055,11 +1227,12 @@ $('#authlist').addEventListener('click',async e=>{
 /* settings */
 const SFIELDS={proxy_user:'sUser',proxy_pass:'sPass',bind:'sBind',base_port:'sBase',
                mtu:'sMtu',dns:'sDns',watchdog_interval:'sWi',watchdog_fails:'sWf',
-               give_up_after:'sGu'};
+               give_up_after:'sGu',max_active:'sMax',port_mem_mb:'sMem'};
 let SET=null;
 async function loadSettings(){
   SET=await j('/api/settings');
   for(const [k,id] of Object.entries(SFIELDS))$('#'+id).value=SET.settings[k];
+  $('#sLow').checked=!!SET.settings.low_resource;
   $('#hookUrl').textContent=`${location.origin}/api/rotate?key=${SET.rotate_key}&port=${(LAST[0]||{}).port||29001}`;
   $('#setPaths').innerHTML=Object.entries(SET.paths)
     .map(([k,v])=>`<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('');
@@ -1069,6 +1242,7 @@ async function loadSettings(){
 async function saveSettings(restart){
   const body={settings:{},restart};
   for(const [k,id] of Object.entries(SFIELDS))body.settings[k]=$('#'+id).value.trim();
+  body.settings.low_resource=$('#sLow').checked;
   const r=await fetch('/api/settings',{method:'POST',body:JSON.stringify(body)});
   const d=await r.json().catch(()=>({}));
   if(!r.ok||d.error)return toast(d.error||('Lỗi '+r.status));
@@ -1476,7 +1650,7 @@ function setView(v){
 $('#viewSeg').onclick=e=>{const b=e.target.closest('button');if(b)setView(b.dataset.view)};
 async function tick(){ loadProvs(); return await _tick() }
 async function _tick(){
-  const d=await j('/api/status');LAST=d.rows;
+  const d=await j('/api/status');LAST=d.rows;STAT=d;
   RUNNING=new Set(d.rows.filter(r=>r.state==='running').map(r=>r.key));
   $('#host').textContent=d.bind;
   AUTH=d.auth||null; HOOK=d.rotate_key||null; renderCreds();
@@ -1497,7 +1671,348 @@ async function _tick(){
   $('#health').classList.toggle('live',live);
   $('#liveDot').classList.toggle('pulse',d.rows.some(r=>stateOf(r)==='connecting'));
   render(d.rows);
+  if(document.body.classList.contains('simple'))wizPorts();
 }
+/* ===== simple mode: first-run wizard + easy dashboard ===== */
+let WZ={step:1,pid:null,mode:null,proto:null,files:[],res:{}}, WZ_PRESETS=null, STAT={};
+const vn=(()=>{try{const d=new Intl.DisplayNames(['vi'],{type:'region'});return cc=>{try{return d.of(cc)||cc}catch(e){return cc}}}catch(e){return cc=>cc}})();
+const sxFlag=cc=>`<img class="sx-fl" src="${flag(cc)}" alt="${esc(cc||'')}" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'sx-fl',textContent:'${esc((cc||'').toUpperCase())}'}))">`;
+const USER_LABEL={ivpn:'Account ID (dạng i-XXXX-XXXX-XXXX)',pia:'Tên đăng nhập (dạng p1234567)',
+  ipvanish:'Email đăng nhập IPVanish',fastestvpn:'Email / tên đăng nhập FastestVPN'};
+const PASS_HINT={ivpn:'IVPN không kiểm tra mật khẩu OpenVPN — gõ gì cũng được, ví dụ ivpn.'};
+// Countries most people want first; the first 3 available are ticked for them.
+const POPULAR=['US','JP','SG','GB','DE','NL','FR','KR','HK','CA','AU','TW'];
+
+function friendly(msg){
+  const m=String(msg||'');
+  if(/timed? ?out|URLError|urlopen|Name or service|getaddrinfo|Temporary failure|Connection (refused|reset)|Network is unreachable|Failed to fetch/i.test(m))
+    return 'Không kết nối được tới máy chủ của nhà cung cấp. Kiểm tra mạng Internet (và tắt app VPN khác nếu đang bật) rồi bấm thử lại.';
+  if(/HTTP Error 40[13]/.test(m))return 'Nhà cung cấp từ chối yêu cầu tải danh sách máy chủ. Hãy tải file cấu hình thủ công (mục “Nhà cung cấp khác”).';
+  if(/HTTP Error 5\d\d/.test(m))return 'Máy chủ của nhà cung cấp đang lỗi. Đợi vài phút rồi thử lại.';
+  return m;
+}
+function sxError(where,msg){
+  $(where).innerHTML=msg?`<div class="sx-err"><b>!</b><div>${esc(friendly(msg))}</div></div>`:'';
+}
+async function api(url,body){
+  let r,d;
+  try{ r=await fetch(url,body===undefined?{}:{method:'POST',body:JSON.stringify(body)}); d=await r.json().catch(()=>({})) }
+  catch(e){ throw new Error('Không gọi được Proxy Farm — cửa sổ đen (Docker) còn chạy không? '+e.message) }
+  if(!r.ok||d.error)throw new Error(d.error||('Lỗi '+r.status));
+  return d;
+}
+function sxBusy(where,text){ $(where).innerHTML=text?`<div class="sx-busy"><span class="sx-spin"></span>${esc(text)}</div>`:'' }
+
+function setMode(m){
+  document.body.classList.toggle('simple',m==='simple');
+  try{localStorage.setItem('pf-ui',m)}catch(e){}
+  if(m==='simple')wizInit();
+}
+function initMode(){
+  const h=location.hash;
+  if(/^#(simple|wizard)$/.test(h))return setMode('simple');
+  if(h==='#advanced'||/^#(add|settings|export|test|providers)/.test(h))return setMode('advanced');
+  let m='simple'; try{m=localStorage.getItem('pf-ui')||'simple'}catch(e){}
+  setMode(m);
+}
+$('#sxAdvanced').onclick=()=>{setMode('advanced');tick()};
+$('#toSimple').onclick=()=>setMode('simple');
+
+async function wizInit(){
+  if(!WZ_PRESETS){ try{WZ_PRESETS=(await api('/api/presets')).presets}catch(e){WZ_PRESETS=[]} renderProvCards() }
+  const on=(LAST||[]).filter(isOn);
+  wizGo(on.length?4:(WZ.step||1));
+}
+function wizGo(n){
+  WZ.step=n;
+  for(const i of [1,2,3,4])$('#sx'+i).hidden=i!==n;
+  for(const b of $$('#sxSteps button')){const s=+b.dataset.s;
+    b.toggleAttribute('aria-current',s===n); if(s===n)b.setAttribute('aria-current','step');
+    b.classList.toggle('done',s<n); b.disabled=(s===2||s===3)&&!WZ.mode}
+  if(n===2)renderStep2();
+  if(n===3)renderStep3();
+  if(n===4)wizPorts();
+  window.scrollTo({top:0});
+}
+$('#sxSteps').onclick=e=>{const b=e.target.closest('button');if(b&&!b.disabled)wizGo(+b.dataset.s)};
+document.addEventListener('click',e=>{const b=e.target.closest('#simple [data-go]');if(b)wizGo(+b.dataset.go)});
+
+/* step 1 */
+function presetMode(p){
+  if(!p)return 'generic';
+  if(p.id==='hma')return 'hma';
+  if(p.unsupported&&!p.protocols.length)return 'unsupported';
+  const imp=p.protocols.find(x=>x.importable);
+  if(imp)return imp.template?'template':imp.protocol==='wireguard'?'wgimport':'import';
+  return 'manual';
+}
+const MODE_TAG={import:['easy','Dễ nhất · chỉ cần tên đăng nhập + mật khẩu'],wgimport:['easy','Dễ · tải 1 file từ trang của họ'],
+  template:['','Cần 1 file mẫu + tài khoản'],hma:['','Dùng chứng chỉ từ app HMA trên máy'],
+  manual:['','Tải file cấu hình từ trang của họ'],generic:['','File .ovpn / .conf / .zip của bất kỳ nhà nào'],
+  unsupported:['','Không hỗ trợ — xem lý do']};
+const MODE_ORDER={import:0,wgimport:1,template:2,hma:3,manual:4,generic:5,unsupported:6};
+function renderProvCards(){
+  const list=WZ_PRESETS.map(p=>({p,mode:presetMode(p)}));
+  list.push({p:null,mode:'generic'});
+  list.sort((a,b)=>MODE_ORDER[a.mode]-MODE_ORDER[b.mode]);
+  $('#sxProvs').innerHTML=list.map(({p,mode})=>{const [cls,t]=MODE_TAG[mode];
+    return `<button class="sx-prov${mode==='unsupported'?' off':''}" data-pid="${p?esc(p.id):''}" aria-pressed="${(p?p.id:null)===WZ.pid&&WZ.mode===mode}">
+      <span class="sx-nm">${p?esc(p.name):'Nhà cung cấp khác / máy chủ riêng'}${p&&p.has_account?' ✓':''}</span>
+      <span class="sx-tag ${cls}">${esc(t)}</span></button>`}).join('');
+}
+$('#sxProvs').onclick=e=>{
+  const b=e.target.closest('.sx-prov');if(!b)return;
+  const p=WZ_PRESETS.find(x=>x.id===b.dataset.pid)||null, mode=presetMode(p);
+  if(mode==='unsupported'){toast((p.unsupported||'Không hỗ trợ').slice(0,160));return}
+  WZ={...WZ,pid:p?p.id:null,mode,files:[],uploaded:null,picked:null};
+  WZ.proto=mode==='import'||mode==='template'||mode==='wgimport'?p.protocols.find(x=>x.importable).protocol:null;
+  renderProvCards(); wizGo(2);
+};
+
+/* step 2 */
+function curPreset(){return (WZ_PRESETS||[]).find(x=>x.id===WZ.pid)||null}
+function renderStep2(){
+  const p=curPreset(), m=WZ.mode;
+  $('#sx2Title').textContent=p?`Tài khoản ${p.name}`:'File cấu hình VPN';
+  const how=[];
+  if(m==='import')how.push(`<b>Bạn chỉ cần nhập tên đăng nhập và mật khẩu.</b> Proxy Farm tự tải danh sách máy chủ của ${esc(p.name)}.`);
+  if(m==='wgimport')how.push(`<b>Tải MỘT file WireGuard (.conf) bất kỳ</b> từ trang tài khoản ${esc(p.name)} rồi chọn nó bên dưới. Proxy Farm tự tạo cho mọi nước.`);
+  if(m==='template')how.push(`<b>Cần 2 thứ:</b> tên/mật khẩu OpenVPN và MỘT file .ovpn bất kỳ của ${esc(p.name)} (dùng làm mẫu).`);
+  if(m==='manual')how.push(`<b>${esc(p.name)} không có danh sách máy chủ công khai</b>, nên bạn tải file cấu hình OpenVPN (hoặc WireGuard) từ trang của họ — chọn nhiều file hoặc cả file .zip cũng được — rồi nhập tài khoản.`);
+  if(m==='hma')how.push(`<b>HMA không cho tải file cấu hình</b>, nhưng app HMA trên máy đã có sẵn chứng chỉ. Chọn file <code>tokenCoreSE.json</code>
+    (macOS: <code>/Library/Application Support/HMA VPN/state/vpn/</code>). Nếu đã chạy <code>run.sh</code> trên máy có app HMA thì đã tự nạp — bấm Tiếp tục.`);
+  if(m==='generic')how.push(`<b>Dùng được với mọi nhà cung cấp có file OpenVPN (.ovpn) hoặc WireGuard (.conf)</b>, kể cả máy chủ riêng của bạn.
+    Mỗi file là một vị trí. Nếu file .ovpn đi kèm <code>ca.crt</code> / <code>ta.key</code>, chọn chúng cùng lúc.`);
+  if(p&&p.credentials)how.push(`<b>Lấy tài khoản ở đâu:</b> ${esc(p.credentials)}`);
+  if(p&&p.account_url)how.push(`<a href="${esc(p.account_url)}" target="_blank" rel="noopener">→ Mở trang tài khoản ${esc(p.name)}</a>`);
+  if(p&&p.unsupported)how.push(`<span style="color:var(--warn)">Lưu ý: ${esc(p.unsupported)}</span>`);
+  $('#sxHow').innerHTML=how.map(x=>`<div>${x}</div>`).join('');
+  const showUP=m==='import'||m==='template'||m==='manual'||m==='generic';
+  $('#sxUP').hidden=!showUP&&m!=='hma';
+  $('#sxUser').parentElement.hidden=m==='hma';
+  $('#sxUserL').textContent=USER_LABEL[WZ.pid]||'Tên đăng nhập dịch vụ';
+  $('#sxPassHint').textContent=m==='hma'?'Chỉ cần khi bạn chọn file .p12.':
+    (PASS_HINT[WZ.pid]||'Thường là tên/mật khẩu riêng cho thiết bị thủ công (service credentials), KHÁC email đăng nhập web.')+
+    (m==='manual'||m==='generic'?' Để trống nếu file của bạn không cần mật khẩu (ví dụ WireGuard).':'')+
+    (p&&p.has_account?' Đã lưu tài khoản trước đó — để trống để dùng lại.':'');
+  $('#sxPass').previousElementSibling.textContent=m==='hma'?'Mật khẩu file .p12 (nếu có)':'Mật khẩu dịch vụ';
+  const showFile=m!=='import';
+  $('#sxFileWrap').hidden=!showFile;
+  const FILE={wgimport:['File WireGuard (.conf)','.conf,.txt','Chỉ đọc PrivateKey và Address trong file.',false],
+    template:['File OpenVPN mẫu (.ovpn)','.ovpn,.txt','Một file bất kỳ là đủ.',false],
+    manual:['File cấu hình','.ovpn,.conf,.zip,.crt,.key,.pem,.txt','.ovpn, .conf, .zip — chọn nhiều file cùng lúc được.',true],
+    generic:['File cấu hình','.ovpn,.conf,.zip,.crt,.key,.pem,.txt','.ovpn, .conf, .zip — chọn nhiều file cùng lúc được.',true],
+    hma:['File tokenCoreSE.json (hoặc .p12)','.json,.p12,.pfx','',false]}[m]||['','','',false];
+  $('#sxFileL').textContent=FILE[0]; $('#sxFile').accept=FILE[1]; $('#sxDropS').textContent=FILE[2]; $('#sxFile').multiple=FILE[3];
+  $('#sxFiles').textContent=WZ.files.length?'✓ '+WZ.files.map(f=>f.name).join(', '):'';
+  sxError('#sxErr2','');
+}
+const sxDrop=$('#sxDrop'), sxFile=$('#sxFile');
+sxDrop.onclick=()=>sxFile.click();
+sxDrop.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();sxFile.click()}};
+sxFile.onchange=()=>{WZ.files=[...sxFile.files];sxFile.value='';renderStep2()};
+for(const ev of ['dragenter','dragover'])sxDrop.addEventListener(ev,e=>{e.preventDefault();sxDrop.classList.add('over')});
+for(const ev of ['dragleave','drop'])sxDrop.addEventListener(ev,e=>{e.preventDefault();sxDrop.classList.remove('over')});
+sxDrop.addEventListener('drop',e=>{WZ.files=[...(e.dataTransfer?.files||[])];renderStep2()});
+
+$('#sxSave').onclick=async()=>{
+  const p=curPreset(), m=WZ.mode, user=$('#sxUser').value.trim(), pass=$('#sxPass').value;
+  sxError('#sxErr2','');
+  const need=(c,msg)=>{if(!c)throw new Error(msg)};
+  $('#sxSave').disabled=true;
+  try{
+    if(m==='import'||m==='template'){
+      need((user&&pass)||p.has_account,'Hãy nhập cả tên đăng nhập và mật khẩu.');
+      if(m==='template')need(WZ.files.length,'Hãy chọn một file .ovpn mẫu của '+p.name+'.');
+      sxBusy('#sxErr2','Đang tải danh sách máy chủ của '+p.name+'… (có thể mất tới 1 phút)');
+      const body={id:p.id,protocol:WZ.proto,user,pass,per_city:1};
+      if(m==='template')body.template=await WZ.files[0].text();
+      const d=await api('/api/preset/import',body);
+      toast(`Đã thêm ${d.locations} vị trí của ${p.name}`);
+    }else if(m==='wgimport'){
+      need(WZ.files.length,'Hãy chọn file WireGuard (.conf) đã tải từ trang '+p.name+'.');
+      const txt=await WZ.files[0].text();
+      need(/PrivateKey/i.test(txt),'File này không phải file WireGuard (không có dòng PrivateKey). Hãy tải lại file .conf từ trang '+p.name+'.');
+      sxBusy('#sxErr2','Đang tải danh sách máy chủ của '+p.name+'…');
+      const d=await api('/api/preset/import',{id:p.id,protocol:'wireguard',wg_conf:txt,per_city:1});
+      toast(`Đã thêm ${d.locations} vị trí của ${p.name}`);
+    }else if(m==='hma'){
+      if(WZ.files.length){
+        const f=WZ.files[0];
+        const body=/\.(p12|pfx)$/i.test(f.name)?{p12:await b64(f),password:pass}:{token:await f.text()};
+        sxBusy('#sxErr2','Đang đọc chứng chỉ…');
+        await api('/api/provider/hma',body);
+      }else{
+        const pv=(await api('/api/providers')).providers.find(x=>x.id==='hma');
+        need(pv&&pv.ready,'Chưa có chứng chỉ HMA. Hãy chọn file tokenCoreSE.json.');
+      }
+    }else{ // manual / generic
+      need(WZ.files.length,'Hãy chọn ít nhất một file cấu hình (.ovpn, .conf hoặc .zip).');
+      sxBusy('#sxErr2','Đang nạp file…');
+      const files=await Promise.all(WZ.files.map(async f=>({name:f.name,b64:await b64(f)})));
+      const d=await api('/api/upload',{files,provider:WZ.pid||undefined});
+      if(!(d.imported||[]).length)throw new Error((d.errors||[])[0]||'Không có file cấu hình VPN nào dùng được trong những file đã chọn.');
+      const provs=(await api('/api/providers')).providers.filter(x=>x.needs_auth&&(WZ.pid?x.id===WZ.pid:true));
+      if(user&&pass){ for(const x of (provs.length?provs:[{id:WZ.pid}]).filter(x=>x.id))
+        await api('/api/provider/auth',{provider:x.id,user,pass}) }
+      else if(provs.some(x=>!x.has_auth)){
+        WZ.files=[]; renderStep2();
+        throw new Error('Đã nạp file, nhưng file OpenVPN này cần tên đăng nhập và mật khẩu. Hãy nhập vào 2 ô ở trên rồi chọn lại file và bấm Tiếp tục.');
+      }
+      WZ.uploaded=new Set(d.imported.map(n=>n.replace(/[^A-Za-z0-9._-]/g,'_')));
+      toast(`Đã nạp ${d.imported.length} file`+((d.errors||[]).length?` — ${d.errors.length} file bị bỏ qua`:''));
+    }
+    $('#sxPass').value=''; WZ.files=[]; WZ_PRESETS=null; WZ_PRESETS=(await api('/api/presets')).presets; renderProvCards();
+    WZ.picked=null; await loadLocs(); wizGo(3);
+  }catch(e){ sxError('#sxErr2',e.message) }
+  finally{ $('#sxSave').disabled=false }
+};
+
+/* step 3 */
+function wizLocs(){
+  const all=(LOCS&&LOCS.locations)||[];
+  if(WZ.mode==='hma')return all.filter(l=>l.protocol==='ikev2-cert');
+  // Right after an upload, offer exactly the files just added.
+  if(WZ.uploaded&&WZ.uploaded.size){const u=all.filter(l=>l.config&&WZ.uploaded.has(l.config)); if(u.length)return u}
+  if(!WZ.pid)return all.filter(l=>l.config||String(l.key).startsWith('EAP-'));
+  return all.filter(l=>String(l.provider||'').toLowerCase()===WZ.pid);
+}
+function renderStep3(){
+  const locs=wizLocs(), on=new Set((LAST||[]).filter(isOn).map(r=>r.key));
+  const cap=STAT.max_active||0, used=(LAST||[]).filter(isOn).length;
+  const p=curPreset();
+  const notes=[];
+  if(STAT.low_resource&&cap)notes.push(`Chế độ máy yếu đang bật: tối đa <b>${cap}</b> proxy chạy cùng lúc để máy không bị chậm${used?` (đang chạy ${used})`:''}.`);
+  else if(cap)notes.push(`Giới hạn: tối đa <b>${cap}</b> proxy chạy cùng lúc${used?` (đang chạy ${used})`:''}.`);
+  if(p&&p.max_connections)notes.push(`${esc(p.name)} cho tối đa ${p.max_connections} kết nối cùng lúc.`);
+  $('#sxLow').hidden=!notes.length; $('#sxLow').innerHTML=notes.join(' ');
+  if(!locs.length){
+    $('#sxCC').innerHTML=`<div class="sx-note">Chưa có vị trí nào. Quay lại bước 2 để nhập tài khoản hoặc nạp file.</div>`;
+    $('#sxStart').disabled=true; $('#sxPicked').textContent=''; return;
+  }
+  $('#sxStart').disabled=false;
+  const rows=locs.map(l=>({l,name:vn(l.country),city:l.city&&l.city!==l.country?l.city:''}))
+    .sort((a,b)=>a.name.localeCompare(b.name,'vi')||a.city.localeCompare(b.city));
+  // Suggest a few popular countries, one city each, but never more than the cap allows.
+  if(!WZ.picked||WZ.pickedFor!==(WZ.pid||WZ.mode)){
+    const room=cap?Math.max(0,cap-used):3, want=Math.min(3,room||0), picked=new Set(), ccs=new Set();
+    for(const cc of POPULAR){ if(picked.size>=want)break;
+      const r=rows.find(x=>x.l.country===cc&&!on.has(x.l.key)); if(r&&!ccs.has(cc)){picked.add(r.l.key);ccs.add(cc)} }
+    for(const r of rows){ if(picked.size>=want)break; if(!on.has(r.l.key)&&!ccs.has(r.l.country)){picked.add(r.l.key);ccs.add(r.l.country)} }
+    WZ.picked=picked; WZ.pickedFor=WZ.pid||WZ.mode;
+  }
+  rows.sort((a,b)=>(on.has(b.l.key)||WZ.picked.has(b.l.key))-(on.has(a.l.key)||WZ.picked.has(a.l.key)));
+  const q=($('#sxFind').value||'').trim().toLowerCase();
+  $('#sxCC').innerHTML=rows.filter(r=>!q||(r.name+' '+r.city+' '+r.l.country+' '+(r.l.countryName||'')).toLowerCase().includes(q)).map(r=>{
+    const k=r.l.key, isOnNow=on.has(k);
+    return `<label><input type="checkbox" data-k="${esc(k)}"${isOnNow||WZ.picked.has(k)?' checked':''}${isOnNow?' disabled':''}>
+      ${sxFlag(r.l.country)}<span class="sx-ct">${esc(r.name)}<small>${esc(r.city)}${isOnNow?' · đang bật':''}</small></span></label>`}).join('')
+    ||'<div class="sx-note">Không tìm thấy nước nào khớp.</div>';
+  sxPickedNote();
+}
+function sxPickedNote(){
+  const n=WZ.picked.size, cap=STAT.max_active||0, used=(LAST||[]).filter(isOn).length;
+  $('#sxPicked').innerHTML=n?`Đã chọn <b>${n}</b> nước.`+(cap&&n+used>cap?` <span style="color:var(--warn)">Vượt giới hạn ${cap} proxy cùng lúc — chỉ ${Math.max(0,cap-used)} cái đầu được bật.</span>`:''):'Chưa chọn nước nào.';
+  $('#sxStart').querySelector('span').textContent=n?`Bật ${n} proxy`:'Bật proxy';
+}
+$('#sxCC').addEventListener('change',e=>{const c=e.target.closest('input[data-k]');if(!c)return;
+  c.checked?WZ.picked.add(c.dataset.k):WZ.picked.delete(c.dataset.k); sxPickedNote()});
+$('#sxFind').oninput=()=>renderStep3();
+$('#sxMore').onclick=()=>{ if(!WZ.mode){ const r=(LAST||[]).find(isOn); if(r){WZ.pid=r.provider==='hma'?'hma':r.provider;WZ.mode=WZ.pid==='hma'?'hma':'manual'} }
+  WZ.picked=new Set(); WZ.pickedFor=WZ.pid||WZ.mode; wizGo(3) };
+$('#sxStart').onclick=async()=>{
+  const keys=[...WZ.picked]; sxError('#sxErr3','');
+  if(!keys.length)return sxError('#sxErr3','Hãy đánh dấu ít nhất một nước.');
+  $('#sxStart').disabled=true; sxBusy('#sxErr3','Đang bật…');
+  try{
+    const d=await api('/api/start',{keys});
+    sxBusy('#sxErr3','');
+    const ref=d.refused||[];
+    if(ref.length){
+      const all=ref.filter(r=>r.provider==='_all'), prov=ref.filter(r=>r.provider!=='_all');
+      toast((all.length?`${all.length} proxy chưa bật vì giới hạn ${all[0].limit} proxy cùng lúc (chế độ máy yếu). `:'')+
+            (prov.length?`${prov.length} proxy chưa bật vì nhà cung cấp chỉ cho ${prov[0].limit} kết nối.`:''));
+    }
+    WZ.picked=new Set(); await tick(); wizGo(4);
+  }catch(e){ sxError('#sxErr3',e.message) }
+  finally{ $('#sxStart').disabled=false }
+};
+
+/* step 4: live status */
+const SX_WHY={
+  auth:'Sai tên đăng nhập hoặc mật khẩu. Hãy dùng tài khoản <b>dịch vụ</b> (service credentials), không phải email đăng nhập web — bấm “Sửa tài khoản”.',
+  cert:'Không xác minh được máy chủ VPN. Thử tải file cấu hình mới từ trang nhà cung cấp.',
+  silent:'Máy chủ VPN chưa trả lời. Có thể mạng của bạn chặn VPN hoặc máy chủ đang bận — farm tự thử lại.',
+  noconnect:'Chưa kết nối được — farm tự thử lại.',
+  nodata:'Đã kết nối nhưng chưa có dữ liệu (lỗi tạm thời phía nhà cung cấp) — farm tự thử lại.',
+  dead:'Mất kết nối — đang tự nối lại.'};
+function proxyUrl(r){
+  const host=!STAT.bind||STAT.bind==='0.0.0.0'?location.hostname:STAT.bind;
+  return AUTH&&AUTH.user?`socks5://${AUTH.user}:${AUTH.pass}@${host}:${r.port}`:`socks5://${host}:${r.port}`;
+}
+function wizPorts(){
+  if(WZ.step!==4)return;
+  const rows=(LAST||[]).filter(isOn);
+  $('#sxCopyAll').disabled=!rows.length;
+  if(!rows.length){
+    $('#sxPorts').innerHTML=`<div class="sx-note">Chưa có proxy nào đang bật. Bấm <b>Thêm nước khác</b> hoặc <b>Đổi / thêm nhà VPN</b>.</div>`;
+    $('#sxUse').hidden=true; return;
+  }
+  $('#sxUse').hidden=false;
+  const html=rows.map(r=>{
+    const s=stateOf(r); let pill,st,cls='';
+    if(s==='online'){pill='<span class="sx-pill ok">✓ Đang hoạt động</span>';cls='ok';
+      st=`IP: <b>${esc(r.ip||'—')}</b>${r.latency!=null?` · phản hồi ${r.latency} ms`:''}`}
+    else if(s==='wait'){pill='<span class="sx-pill bad">Chưa kết nối được</span>';cls='warn';
+      st=`${SX_WHY[r.wait.why]||'Lần trước chưa kết nối được — farm tự thử lại.'} Thử lại sau <span class="tk" data-until="${r.wait.until}">${mmss(r.wait.until-Date.now()/1000)}</span>.`}
+    else if(s==='error'){pill='<span class="sx-pill bad">Lỗi</span>';cls='bad';st=esc(r.failed.why||'Không kết nối được.')}
+    else {pill='<span class="sx-pill warn"><span class="sx-spin" style="width:12px;height:12px;border-width:2px"></span> Đang kết nối…</span>';
+      st=`${esc(PHASE_WHY[(r.phase||{}).phase]||'Đang kết nối tới máy chủ VPN.')} Thường mất 10–60 giây.`}
+    const res=WZ.res[r.key];
+    const fix=s==='wait'&&r.wait.why==='auth'?`<button class="sx-btn sm" data-fix="${esc(r.provider||'')}">Sửa tài khoản</button>`:'';
+    return `<div class="sx-port${fix?' fix':''}" data-k="${esc(r.key)}">
+      ${sxFlag(r.country)}
+      <div><div class="sx-who"><span>${esc(vn(r.country))}</span>${r.city&&r.city!==r.country?` <small style="font-weight:500;color:var(--mut)">· ${esc(r.city)}</small>`:''} ${pill}</div>
+        <div class="sx-ep">127.0.0.1:${r.port} · ${esc(r.provider||'')}</div></div>
+      <div class="sx-acts">${fix}
+        <button class="sx-btn sm" data-test="${esc(r.key)}"><svg class="i"><use href="#ic-activity"/></svg><span>Kiểm tra</span></button>
+        <button class="sx-btn sm go" data-copy="${esc(r.key)}"><svg class="i"><use href="#ic-copy"/></svg><span>Chép proxy</span></button>
+        <button class="sx-btn sm" data-off="${esc(r.key)}" title="Tắt proxy này">Tắt</button></div>
+      <div class="sx-st ${cls}">${st}</div>
+      ${res?`<div class="sx-res">${res}</div>`:''}
+    </div>`}).join('');
+  setHTML($('#sxPorts'),html);
+  const host=!STAT.bind||STAT.bind==='0.0.0.0'?location.hostname:STAT.bind;
+  setHTML($('#sxUse'),`<b>Cách dùng trong trình duyệt / phần mềm:</b> chọn loại proxy <b>SOCKS5</b> (hoặc HTTP),
+    máy chủ <code>${esc(host)}</code>, cổng là số sau dấu “:” ở mỗi dòng (ví dụ <code>${rows[0].port}</code>),
+    tên đăng nhập <code>${esc(AUTH?.user||'')}</code>, mật khẩu <code>${esc(AUTH?.pass||'')}</code>.
+    Nút <b>Chép proxy</b> chép sẵn dạng <code>socks5://tên:mật-khẩu@máy-chủ:cổng</code>.`);
+}
+$('#sxPorts').addEventListener('click',async e=>{
+  const t=e.target.closest('[data-test]'), c=e.target.closest('[data-copy]'), o=e.target.closest('[data-off]'), f=e.target.closest('[data-fix]');
+  const row=k=>(LAST||[]).find(r=>r.key===k);
+  if(c){const r=row(c.dataset.copy); if(r)copyText(proxyUrl(r),'Đã chép proxy — dán vào phần mềm cần dùng'); return}
+  if(f){const pid=f.dataset.fix, p=(WZ_PRESETS||[]).find(x=>x.id===pid);
+    WZ.pid=p?p.id:pid; WZ.mode=p?presetMode(p):'generic'; if(WZ.mode==='manual'||WZ.mode==='generic')WZ.pid=pid;
+    WZ.proto=p&&p.protocols.find(x=>x.importable)?.protocol; wizGo(2); return}
+  if(o){ if(!confirm('Tắt proxy này?'))return; await api('/api/stop',{keys:[o.dataset.off]}).catch(err=>toast(friendly(err.message)));
+    delete WZ.res[o.dataset.off]; await tick(); return }
+  if(t){
+    const k=t.dataset.test; WZ.res[k]='<span class="sx-spin" style="display:inline-block;width:14px;height:14px;border-width:2px;vertical-align:-2px"></span> Đang kiểm tra (tối đa 20 giây)…'; wizPorts();
+    let d; try{d=(await api('/api/test',{keys:[k]})).results[0]}catch(err){d={ok:false,error:err.message}}
+    if(d.ok){
+      WZ.res[k]=`<span style="color:var(--ok);font-weight:700">✓ Proxy chạy tốt.</span> IP <b>${esc(d.ip)}</b>, ra ở <b>${esc(vn(d.country||''))}</b>${d.city?' ('+esc(d.city)+')':''}, phản hồi ${d.total_ms} ms.`+
+        (d.geo_match===false&&d.expected_country?` <span style="color:var(--warn)">Lưu ý: dịch vụ tra IP báo nước khác với nước đã chọn — vẫn dùng được.</span>`:'');
+    }else{
+      const r=row(k), s=r?stateOf(r):'';
+      WZ.res[k]=`<span style="color:var(--bad);font-weight:700">✗ Chưa dùng được.</span> `+
+        (s==='connecting'?'Proxy còn đang kết nối — đợi thêm chút rồi bấm Kiểm tra lại.':s==='wait'?'Proxy chưa kết nối được (xem lý do ở trên).':esc(friendly(d.error||'Không có phản hồi.')));
+    }
+    wizPorts();
+  }
+});
+$('#sxCopyAll').onclick=()=>{const rows=(LAST||[]).filter(isOn); if(rows.length)copyText(rows.map(proxyUrl).join('\n'),`Đã chép ${rows.length} proxy`)};
+
 setInterval(()=>{const now=Date.now()/1000;
   for(const el of document.querySelectorAll('.tk[data-until]'))el.textContent=mmss(+el.dataset.until-now);
   for(const el of document.querySelectorAll('.tk[data-since]'))el.textContent=clock(now-el.dataset.since);
@@ -1507,6 +2022,7 @@ if(new URLSearchParams(location.search).has('once'))document.body.classList.add(
 loadLocs().then(applyHash);tick().then(()=>{
   if(location.hash==='#export')openExport(LAST);
   if(location.hash==='#test')openTest(LAST.filter(r=>r.state==='running').map(r=>r.key).slice(0,20));
+  initMode();
 });
 if(!new URLSearchParams(location.search).has('once'))setInterval(tick,5000);
 </script>
