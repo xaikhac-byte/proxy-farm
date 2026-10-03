@@ -13,6 +13,8 @@ giao diện web.
   FastestVPN, Windscribe: nhập tài khoản **một lần**, farm tự tải danh sách máy chủ.
 - **Tự phục hồi.** Mỗi cổng có kill-switch, watchdog và tự thử lại cho tới khi kết nối
   được; UI cho thấy từng bước đang làm.
+- **Dễ dùng, chạy được trên máy yếu.** Giao diện hướng dẫn 4 bước bằng tiếng Việt, chế độ
+  máy yếu (mỗi cổng ~16 MB RAM), cài trên Windows bằng một cú nháy đúp.
 
 ## Mục lục
 
@@ -20,6 +22,7 @@ giao diện web.
 - [Nhà cung cấp hỗ trợ](#nhà-cung-cấp-hỗ-trợ)
 - [Yêu cầu](#yêu-cầu)
 - [Cài đặt nhanh](#cài-đặt-nhanh)
+- [Cài trên Windows từng bước](#cài-trên-windows-từng-bước)
 - [Sử dụng](#sử-dụng)
 - [Cấu hình](#cấu-hình)
 - [Cách hoạt động](#cách-hoạt-động)
@@ -108,8 +111,13 @@ git clone <repo-url> proxy-farm && cd proxy-farm
 ./run.sh
 ```
 
-Mở **http://127.0.0.1:8090**. Nếu app HMA có trên máy, chứng chỉ được nạp tự động; vào
-**Thêm vị trí**, chọn nơi muốn chạy rồi bấm **Bật**.
+Windows: nháy đúp **`start-windows.bat`** — xem [Cài trên Windows từng bước](#cài-trên-windows-từng-bước).
+
+Mở **http://127.0.0.1:8090**. Lần đầu sẽ thấy **hướng dẫn 4 bước**: chọn nhà VPN → nhập
+tài khoản (hoặc chọn file) → chọn nước → **Bật**, rồi bấm *Kiểm tra* và *Chép proxy*. Giao
+diện đầy đủ (bảng cổng, thao tác hàng loạt, xuất danh sách…) nằm sau nút **Nâng cao**; nút
+hình ngôi nhà ở thanh bên trái quay lại chế độ đơn giản. Nếu app HMA có trên máy, chứng
+chỉ được nạp tự động.
 
 `./run.sh` tạo thư mục dữ liệu (mặc định `~/proxy-farm`), ghi `.env`, build hai image và
 chạy manager bằng Docker Compose. Lần sau có thể dùng Compose trực tiếp:
@@ -119,6 +127,95 @@ docker compose up -d                  # chạy / cập nhật manager
 docker compose down                   # dừng manager (các cổng proxy vẫn chạy)
 docker compose build node manager     # build lại image sau khi sửa code
 ```
+
+## Cài trên Windows từng bước
+
+Dành cho người không rành kỹ thuật, kể cả máy yếu. Proxy Farm chạy trong **Docker
+Desktop**, mà Docker Desktop chạy trên **WSL2** (Linux tích hợp của Windows).
+
+**Cấu hình tối thiểu**
+
+| | Tối thiểu | Nên có |
+|---|---|---|
+| Windows | 10 bản 21H2 trở lên / 11, 64-bit | Windows 11 |
+| RAM | 4 GB (bật 1–3 proxy) | 8 GB |
+| Ổ cứng trống | 10 GB (Docker Desktop + 2 image ~200 MB) | 20 GB, SSD |
+| CPU | 2 nhân, có ảo hoá (VT-x / AMD-V) | 4 nhân |
+
+Proxy Farm tự nó dùng rất ít: **manager ~20–35 MB, mỗi cổng ~13–20 MB** (đo thật, xem
+[Chế độ máy yếu](#chế-độ-máy-yếu)). Phần nặng là chính Docker Desktop + WSL2 (thường
+1–2 GB), nên trên máy 4 GB hãy giới hạn RAM cho WSL2 như bước 4.
+
+**Bước 1 — Bật ảo hoá.** Mở *Task Manager* → *Performance* → *CPU*: dòng
+*Virtualization* phải là **Enabled**. Nếu là Disabled: khởi động lại, vào BIOS (thường
+bấm F2, F10, Del hoặc Esc khi vừa bật máy), bật *Intel Virtualization Technology / VT-x*
+hoặc *SVM / AMD-V*, lưu (F10) rồi khởi động lại.
+
+**Bước 2 — Cài WSL2.** Bấm Start, gõ `PowerShell`, chuột phải → *Run as administrator*,
+chạy:
+
+```powershell
+wsl --install
+```
+
+rồi khởi động lại máy. (Đã có WSL thì chạy `wsl --update` cho chắc.)
+
+**Bước 3 — Cài Docker Desktop.** Tải ở <https://www.docker.com/products/docker-desktop/>
+(hoặc `winget install -e --id Docker.DockerDesktop`), cài với lựa chọn mặc định — giữ dấu
+tích *Use WSL 2 instead of Hyper-V*. Mở Docker Desktop một lần, chấp nhận điều khoản, đợi
+tới khi góc dưới trái báo **Engine running**.
+
+**Bước 4 — (máy ≤ 8 GB RAM) Giới hạn RAM cho WSL2.** Mặc định WSL2 được dùng tới một nửa
+RAM của máy và chậm trả lại, khiến Windows bị ì. Tạo file `%UserProfile%\.wslconfig`
+(ví dụ `C:\Users\Ten\.wslconfig`; mở Notepad, *Save as* → *All files*) với nội dung:
+
+```ini
+[wsl2]
+memory=2GB
+processors=2
+swap=1GB
+```
+
+Máy 6–8 GB có thể để `memory=3GB`. Sau đó thoát Docker Desktop, chạy `wsl --shutdown`
+trong PowerShell rồi mở lại Docker Desktop. (`start-windows.bat` hỏi và tạo hộ file này
+nếu máy dưới 8 GB và chưa có file.) Với 2 GB, Docker Desktop + Proxy Farm + 3 proxy chạy
+thoải mái.
+
+**Bước 5 — Tải Proxy Farm.** Trên trang GitHub bấm *Code* → *Download ZIP*, giải nén
+(ví dụ vào `C:\proxy-farm`). Hoặc `git clone` nếu bạn có git.
+
+**Bước 6 — Chạy.** Nháy đúp **`start-windows.bat`**. Cửa sổ đen sẽ:
+
+1. kiểm tra ảo hoá, WSL2, Docker Desktop (tự mở Docker Desktop nếu chưa chạy) và báo
+   bằng tiếng Việt phải làm gì nếu thiếu;
+2. ghi `.env` (dữ liệu ở `%UserProfile%\proxy-farm`; máy dưới 8 GB tự bật **chế độ máy
+   yếu**);
+3. build hai image — **lần đầu mất khoảng 5–15 phút** trên máy yếu, cần Internet;
+4. chạy Proxy Farm và mở trình duyệt tới **http://127.0.0.1:8090**.
+
+Lần sau chỉ cần mở Docker Desktop là Proxy Farm tự chạy lại; nháy đúp lại
+`start-windows.bat` khi muốn cập nhật hoặc nếu trang không mở được.
+
+**Bước 7 — Làm theo hướng dẫn 4 bước trên trang web** (chọn nhà VPN, nhập tài khoản, chọn
+nước, Bật). Thấy *Đang hoạt động* là dùng được: bấm **Chép proxy** rồi dán vào phần mềm
+cần dùng (loại SOCKS5, máy chủ `127.0.0.1`).
+
+Tuỳ chọn khi chạy từ PowerShell:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\run.ps1 -LowResource 1 -MaxActive 2 -Port 8091
+```
+
+Gặp lỗi thường gặp trên Windows:
+
+| Triệu chứng | Làm gì |
+|---|---|
+| `start-windows.bat` báo *Chưa bật ảo hoá* | Làm bước 1 (BIOS). |
+| Docker Desktop báo lỗi WSL / *WSL update failed* | PowerShell (Admin): `wsl --update`, khởi động lại máy. |
+| Máy rất ì khi Docker chạy | Làm bước 4 (`.wslconfig`), giảm số proxy bật cùng lúc. |
+| *port is already allocated* / cổng 8090 bận | Chạy `run.ps1 -Port 8091` rồi mở `http://127.0.0.1:8091`. |
+| Trang web không mở | Mở Docker Desktop, đợi *Engine running*, nháy đúp lại `start-windows.bat`. |
+| Windows Defender / SmartScreen chặn file .bat | Chuột phải file → *Properties* → tích *Unblock*, hoặc *More info → Run anyway*. |
 
 ## Sử dụng
 
@@ -188,6 +285,38 @@ số kết nối cùng lúc, bật công tắc *Giới hạn* trong thẻ nhà c
 farm sẽ từ chối bật quá số đó. Giá trị gợi ý: ProtonVPN/NordVPN 10, ExpressVPN 8,
 CyberGhost 7, Mullvad 5.
 
+### Chế độ máy yếu
+
+Bật bằng `LOW_RESOURCE=1 ./run.sh` (Windows: tự bật khi máy dưới 8 GB RAM) hoặc trong
+**Nâng cao → Cài đặt → Máy yếu**. Khi bật:
+
+- mỗi cổng bị giới hạn cứng **64 MB RAM** (`--memory`, không swap) và **0,5 CPU**;
+- gost (proxy trong cổng) chạy một luồng (`GOMAXPROCS=1`, `GOGC=50`), chỉ ghi log cảnh
+  báo; charon (IKEv2) dùng 4 luồng thay vì 16, libreswan 1 luồng mã hoá phụ;
+- chỉ cho **bật tối đa 3 cổng cùng lúc** (đổi được; 0 = không giới hạn). Bật quá thì
+  farm từ chối và nói rõ lý do;
+- manager bị giới hạn 256 MB (`mem_limit` trong `docker-compose.yml`, đổi bằng
+  `MANAGER_MEM`).
+
+Mỗi cổng chỉ chạy đúng một tiến trình tunnel + một gost; watchdog là shell + `curl` mỗi
+15 giây. Image đều dựa trên Alpine (node ~102 MB, manager ~95 MB trên đĩa).
+
+**Đo thật** (`docker stats` + `memory.peak` của cgroup, Linux x86_64, Docker 26, ngày
+03/10/2026):
+
+| Thành phần | RAM khi chạy | Đỉnh | Ghi chú |
+|---|---|---|---|
+| manager (khởi động, chưa làm gì) | 19 MB | — | Python + UI |
+| manager sau khi nạp NordVPN (7 000 máy chủ) | 34 MB | 69 MB | Python giữ lại bộ nhớ đã dùng |
+| 1 cổng WireGuard, **đang online** | 15,5–16 MB | 19 MB | tunnel thật tới máy chủ WireGuard thử nghiệm |
+| … khi tải 3 file song song qua proxy | 16 MB | 21 MB | ~50 MB/s mỗi luồng, dù bị giới hạn 0,5 CPU |
+| 1 cổng OpenVPN (đang bắt tay) | 12–13 MB | — | chưa có tài khoản thật, nên chưa online |
+| 1 cổng IKEv2 user/mật khẩu (đang bắt tay) | 16–17 MB | — | như trên |
+
+Chế độ máy yếu không làm một cổng nhẹ đi nhiều (16 MB → 15,5 MB, 17 → 10 luồng); cái nó
+mang lại là **giới hạn số cổng** và **chặn trên** để một cổng lỗi không ăn hết RAM. Ước
+tính: 3 cổng + manager ≈ **80–100 MB**, rất nhỏ so với Docker Desktop.
+
 ### Webhook xoay IP
 
 ```
@@ -230,6 +359,11 @@ Biến cho `./run.sh` (được ghi vào `.env`, lần sau không cần nhắc l
 | `PORT` | `8090` | Cổng UI, chỉ trên `127.0.0.1`. |
 | `BIND` | `127.0.0.1` | Địa chỉ các cổng proxy lắng nghe. Đặt IP LAN/Tailscale nếu máy khác cần dùng. |
 | `SCAN` | `~/Downloads` | Thư mục quét gợi ý file cấu hình (chỉ-đọc). Để trống là tắt. |
+| `LOW_RESOURCE` | `0` (Windows < 8 GB RAM: `1`) | [Chế độ máy yếu](#chế-độ-máy-yếu). |
+| `MAX_ACTIVE` | `3` khi máy yếu, không thì không giới hạn | Số cổng bật cùng lúc tối đa. |
+| `MANAGER_MEM` | `256m` | Giới hạn RAM của manager. |
+
+Các giá trị máy yếu chỉ là mặc định lần chạy đầu; sau đó chỉnh trong **Cài đặt**.
 
 Trong UI (**Cài đặt**): user/mật khẩu proxy, địa chỉ lắng nghe, cổng bắt đầu, MTU, DNS
 trong tunnel, ngưỡng watchdog, khoá webhook. Thay đổi nằm trong `docker run` của từng
@@ -319,6 +453,9 @@ không gửi kèm đã nằm sẵn trong image (`node/ca/`).
 - Proton VPN, CyberGhost, ExpressVPN, PureVPN, VyprVPN, hide.me, AirVPN không có danh sách
   máy chủ công khai không cần đăng nhập (hoặc farm không kiểm tra được) — phải tải file
   cấu hình thủ công.
+- `start-windows.bat` / `run.ps1` mới được kiểm tra cú pháp (PowerShell 7 trên Linux),
+  **chưa chạy thử trên máy Windows thật**; đường dẫn `/run/desktop/mnt/host/c/...` mà
+  manager dùng để mount thư mục dữ liệu là cách Docker Desktop (WSL2) đặt tên ổ Windows.
 - Không hỗ trợ giao thức độc quyền (Lightway, Hydra/Catapult, Chameleon, NordWhisper) và
   các máy chủ đặc biệt (obfuscated, double VPN, Onion, IP riêng).
 - Giới hạn số kết nối cùng lúc là số nhà cung cấp công bố; farm tự điền sẵn, đổi được trong
