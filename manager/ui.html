@@ -214,6 +214,16 @@ td.c-sel,th.c-sel{width:40px;padding-right:0}
 .modal input:focus{outline:none;border-color:var(--acc)}
 .modal input::placeholder{color:var(--mut)}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.modal textarea.sm{min-height:90px;font-family:var(--fm);font-size:11.5px;color:var(--tx);padding:9px}
+.badge.ok{color:var(--ok,#2a9d5c);background:rgba(42,157,92,.12)}
+.badge.warn{color:var(--warn,#c98a12);background:rgba(201,138,18,.12)}
+.badge.off{color:var(--mut);background:var(--panel-2)}
+.pinfo{border:1px solid var(--line);border-radius:10px;padding:11px 13px;margin:0 0 12px;font-size:12.5px;line-height:1.6;color:var(--dim)}
+.pinfo a{color:var(--acc)}
+.pinfo .row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:4px 0}
+.authrow{display:grid;grid-template-columns:1.1fr 1fr 1fr auto;gap:8px;align-items:center;margin:6px 0}
+.authrow .nm{font-size:12.5px;font-weight:600}
+.authrow .nm small{display:block;font-weight:400;color:var(--mut)}
 .field{display:flex;flex-direction:column;gap:5px;min-width:0}
 .field>label{font-size:11.5px;font-weight:650;letter-spacing:.03em;text-transform:uppercase;color:var(--dim)}
 .field .hint{font-size:11.5px;color:var(--mut);line-height:1.5}
@@ -507,6 +517,7 @@ body.flat .drawer,body.flat .scrim,body.flat .modal .box{transition:none}
       <h4>Thêm nhà cung cấp</h4>
       <div class="seg" id="provSeg">
         <button data-add="hma" aria-pressed="true">HMA / SurfEasy</button>
+        <button data-add="preset" aria-pressed="false">Nhà cung cấp phổ biến</button>
         <button data-add="file" aria-pressed="false">WireGuard · OpenVPN</button>
         <button data-add="eap" aria-pressed="false">IKEv2 user/mật khẩu</button>
       </div>
@@ -538,14 +549,50 @@ body.flat .drawer,body.flat .scrim,body.flat .modal .box{transition:none}
         </div>
       </div>
 
+      <div id="addPreset" hidden>
+        <p class="note">Chọn nhà cung cấp, nhập tài khoản <b>một lần</b>. Với nhà cung cấp có danh sách
+          máy chủ công khai, Proxy Farm tự tải danh sách và tạo sẵn một vị trí cho mỗi thành phố.</p>
+        <div class="field"><label for="pSel">Nhà cung cấp</label>
+          <select id="pSel"></select></div>
+        <div class="seg" id="pProto" style="margin-top:12px"></div>
+        <div class="pinfo" id="pInfo"></div>
+        <div id="pForm">
+          <div class="grid2" id="pUP">
+            <div class="field"><label for="pUser">Tên đăng nhập dịch vụ</label>
+              <input type="text" id="pUser" autocomplete="off"></div>
+            <div class="field"><label for="pPass">Mật khẩu dịch vụ</label>
+              <input type="password" id="pPass" autocomplete="new-password"></div>
+          </div>
+          <div id="pWG" hidden>
+            <div class="grid2">
+              <div class="field mono"><label for="pWgKey">Private key WireGuard</label>
+                <input type="password" id="pWgKey" autocomplete="off" placeholder="44 ký tự, kết thúc bằng ="></div>
+              <div class="field mono"><label for="pWgAddr">Địa chỉ (Address)</label>
+                <input type="text" id="pWgAddr" placeholder="10.x.x.x/32"></div>
+            </div>
+            <div class="field" style="margin-top:10px"><label for="pWgConf">…hoặc chọn một file .conf đã tải từ trang tài khoản</label>
+              <input type="file" id="pWgConf" accept=".conf,.txt">
+              <span class="hint">Chỉ đọc PrivateKey và Address trong file; file không được lưu lại.</span></div>
+          </div>
+          <div id="pTplWrap" hidden class="field" style="margin-top:10px">
+            <label for="pTpl">Dán nội dung một file .ovpn bất kỳ của nhà cung cấp (làm mẫu)</label>
+            <textarea id="pTpl" class="sm" spellcheck="false"></textarea>
+          </div>
+          <div class="field" style="margin-top:10px;max-width:220px"><label for="pPer">Số máy chủ mỗi thành phố</label>
+            <input type="number" id="pPer" min="1" max="5" value="1">
+            <span class="hint">Mỗi máy chủ là một vị trí (một cổng).</span></div>
+        </div>
+      </div>
+
       <div id="addFile" hidden>
         <p class="note">Một file = một vị trí = một cổng proxy. Nhà cung cấp và quốc gia được đoán từ
           tên file, ví dụ <code>mullvad-se-got.conf</code> → mullvad / Thuỵ Điển.</p>
         <div class="drop" id="drop" role="button" tabindex="0">
           <svg class="i"><use href="#ic-export"/></svg>
           <b>Kéo thả file vào đây</b>
-          <span>WireGuard <code>.conf</code> hoặc OpenVPN <code>.ovpn</code> — Mullvad, Proton,<br>Surfshark, IVPN hoặc máy chủ của bạn. Chọn nhiều file cũng được.</span>
-          <input type="file" id="cfgFile" accept=".conf,.ovpn,.txt" multiple hidden>
+          <span>WireGuard <code>.conf</code>, OpenVPN <code>.ovpn</code> hoặc cả file <code>.zip</code> của nhà cung cấp.<br>
+            Nếu .ovpn dùng <code>ca.crt</code>/<code>ta.key</code> riêng, chọn chúng cùng lúc.</span>
+          <input type="file" id="cfgFile" accept=".conf,.ovpn,.txt,.zip,.crt,.key,.pem" multiple hidden>
         </div>
         <div id="foundwrap" hidden style="margin-top:16px">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:9px">
@@ -554,6 +601,13 @@ body.flat .drawer,body.flat .scrim,body.flat .modal .box{transition:none}
             <button class="btn ghost sm" id="importAll"><svg class="i"><use href="#ic-check"/></svg><span>Nạp tất cả</span></button>
           </div>
           <div id="foundlist"></div>
+        </div>
+        <div id="authwrap" hidden style="margin-top:16px">
+          <h4 style="margin:0 0 6px;font-size:11.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--dim)">
+            Tài khoản OpenVPN</h4>
+          <p class="note">Các file dưới đây cần tên đăng nhập/mật khẩu (<code>auth-user-pass</code>). Đây là
+            tài khoản <b>dịch vụ</b> (service credentials), thường khác mật khẩu đăng nhập web.</p>
+          <div id="authlist"></div>
         </div>
         <p class="note" id="inboxNote" style="margin-top:14px"></p>
         <div class="cfglist" id="cfglist" style="padding:14px 0 0"></div>
@@ -579,6 +633,10 @@ body.flat .drawer,body.flat .scrim,body.flat .modal .box{transition:none}
         <div class="field" style="margin-top:12px"><label for="eSid">ID máy chủ (tuỳ chọn)</label>
           <input type="text" id="eSid" placeholder="để trống thì dùng chính tên máy chủ">
           <span class="hint">Chỉ cần khi nhà cung cấp yêu cầu một IDr khác với tên miền.</span></div>
+        <div class="field" style="margin-top:12px"><label for="eCa">Chứng chỉ CA của máy chủ (tuỳ chọn)</label>
+          <input type="file" id="eCa" accept=".pem,.crt,.cer,.der">
+          <span class="hint">Để trống thì dùng bộ CA hệ thống (đủ cho máy chủ dùng chứng chỉ Let's Encrypt/DigiCert…).
+            Nhà cung cấp tự ký (NordVPN, VyprVPN…) thì tải file CA của họ rồi chọn ở đây.</span></div>
       </div>
     </div>
   </div>
@@ -767,12 +825,17 @@ const openModal=id=>{$('#'+id).classList.add('open')};
 $('#openProv').onclick=()=>{loadProviders();showAdd('hma');$('#mProv').classList.add('open')};
 $('#openSet').onclick=()=>{loadSettings();$('#mSet').classList.add('open')};
 
+let ADD_TAB='hma';
 function showAdd(name){
   for(const b of $$('#provSeg button'))b.setAttribute('aria-pressed',b.dataset.add===name);
   $('#addHma').hidden=name!=='hma'; $('#addFile').hidden=name!=='file'; $('#addEap').hidden=name!=='eap';
-  $('#provSave').hidden=name!=='eap';   // the other two act the moment a file lands
+  $('#addPreset').hidden=name!=='preset';
+  $('#provSave').hidden=name!=='eap'&&name!=='preset';   // hma/file act the moment a file lands
+  ADD_TAB=name;
+  $('#provSave').querySelector('span').textContent='Thêm';
   $('#provMsg').textContent='';
-  if(name==='file'){renderCfgs();loadFound()}
+  if(name==='file'){renderCfgs();loadFound();renderAuth()}
+  if(name==='preset')loadPresets();
 }
 $('#provSeg').onclick=e=>{const b=e.target.closest('button');if(b)showAdd(b.dataset.add)};
 
@@ -781,15 +844,17 @@ function applyHash(){
   const h=location.hash;
   if(h==='#add')return openDrawer();
   if(h==='#settings')return $('#openSet').click();
-  const m=/^#providers(?:-(hma|file|eap))?$/.exec(h);
+  const m=/^#providers(?:-(hma|preset|file|eap))?$/.exec(h);
   if(m){$('#openProv').click(); if(m[1])showAdd(m[1])}
 }
 addEventListener('hashchange',applyHash);
 
 const PKIND={'ikev2-cert':'IKEv2 · chứng chỉ','ikev2-eap':'IKEv2 · user/mật khẩu',
-             wireguard:'WireGuard',openvpn:'OpenVPN'};
+             wireguard:'WireGuard',openvpn:'OpenVPN',mixed:'OpenVPN + WireGuard'};
+let PLIST=[];
 async function loadProviders(){
-  const d=await j('/api/providers'); const box=$('#provlist');
+  const d=await j('/api/providers'); const box=$('#provlist'); PLIST=d.providers;
+  if(ADD_TAB==='file')renderAuth();
   const hma=d.providers.find(p=>p.id==='hma');
   $('#hmaOk').hidden=!hma?.ready; $('#hmaHow').hidden=!!hma?.ready;
   if(hma?.ready)$('#hmaOkSub').textContent=
@@ -797,11 +862,12 @@ async function loadProviders(){
   box.innerHTML=d.providers.map(p=>{
     const sub=p.ready
       ? [p.locations?`${p.locations} vị trí`:'', p.udid?`UDID ${p.udid.slice(0,22)}…`:'',
-         p.expires?`hạn ${p.expires}`:'', p.note].filter(Boolean).join(' · ')
+         p.expires?`hạn ${p.expires}`:'', p.note,
+         p.needs_auth?(p.has_auth?`tài khoản ${p.auth_user||''}`:'⚠ chưa có tài khoản OpenVPN'):''].filter(Boolean).join(' · ')
       : 'Chưa cấu hình — nạp chứng chỉ bên dưới để mở khoá 115 vị trí';
     return `<div class="pv${p.ready?' on':''}">
       <div class="ic"><svg class="i"><use href="#ic-${p.kind.startsWith('ikev2')?'plug':'file'}"/></svg></div>
-      <div class="bd"><div class="t">${esc(p.name)}<span class="badge">${esc(PKIND[p.kind]||p.kind)}</span></div>
+      <div class="bd"><div class="t">${esc(p.title||p.name)}<span class="badge">${esc(PKIND[p.kind]||p.kind)}</span></div>
         <div class="s">${esc(sub)}</div></div>
       ${p.ready?`<span class="use${p.limit&&p.used>=p.limit?' full':''}">${p.limit?`${p.used}/${p.limit} cổng`:`${p.used} cổng đang chạy`}</span>
         <div class="lim" title="${esc(limitHint(p))}">
@@ -894,16 +960,97 @@ async function importHma(f){
 $('#copyHmaPath').onclick=()=>copyText($('#hmaPath').textContent,'Đã chép đường dẫn');
 
 /* IKEv2 user/password provider */
+const b64=async f=>{const b=new Uint8Array(await f.arrayBuffer());let bin='';
+  for(let i=0;i<b.length;i+=0x8000)bin+=String.fromCharCode(...b.subarray(i,i+0x8000));return btoa(bin)};
 $('#provSave').onclick=async()=>{
+  if(ADD_TAB==='preset')return importPreset();
   const body={name:$('#eName').value,server:$('#eServer').value,user:$('#eUser').value,
     pass:$('#ePass').value,server_id:$('#eSid').value,country:$('#eCountry').value,city:$('#eCity').value};
+  const caf=$('#eCa').files[0]; if(caf)body.ca=await b64(caf);
   const r=await fetch('/api/provider/eap',{method:'POST',body:JSON.stringify(body)});
   const d=await r.json().catch(()=>({}));
   if(!r.ok||d.error)return toast(d.error||('Lỗi '+r.status));
-  for(const id of ['eName','eServer','eUser','ePass','eSid','eCountry','eCity'])$('#'+id).value='';
+  for(const id of ['eName','eServer','eUser','ePass','eSid','eCountry','eCity','eCa'])$('#'+id).value='';
   await loadLocs();loadProviders();
   toast(`Đã thêm ${d.target.city} — bật ở mục Thêm vị trí`);
 };
+
+/* popular providers (manager/presets.json) */
+let PRESETS=null,PSEL=null,PPROTO=null;
+const HOW={import:'tự tải danh sách máy chủ',template:'tự tạo từ một file mẫu',manual:'tải file thủ công',
+           builtin:'có sẵn',unsupported:'không hỗ trợ'};
+const PPN={openvpn:'OpenVPN',wireguard:'WireGuard',ikev2:'IKEv2',
+           'ikev2-cert':'IKEv2 · chứng chỉ'};
+async function loadPresets(){
+  if(!PRESETS){ try{PRESETS=(await j('/api/presets')).presets}catch(e){PRESETS=[]}
+    $('#pSel').innerHTML=PRESETS.map(p=>`<option value="${esc(p.id)}">${esc(p.name)}${p.has_account?' ✓':''}</option>`).join('');
+    PSEL=PRESETS.find(p=>p.id!=='hma')?.id; $('#pSel').value=PSEL||'' }
+  renderPreset();
+}
+$('#pSel').onchange=()=>{PSEL=$('#pSel').value;PPROTO=null;renderPreset()};
+$('#pProto').onclick=e=>{const b=e.target.closest('button');if(b){PPROTO=b.dataset.p;renderPreset()}};
+function renderPreset(){
+  const p=(PRESETS||[]).find(x=>x.id===PSEL); if(!p)return;
+  const protos=p.protocols;
+  if(!protos.some(x=>x.protocol===PPROTO))
+    PPROTO=(protos.find(x=>x.importable)||protos[0]||{}).protocol;
+  const cur=protos.find(x=>x.protocol===PPROTO)||{};
+  $('#pProto').innerHTML=protos.map(x=>`<button data-p="${esc(x.protocol)}" aria-pressed="${x.protocol===PPROTO}">${esc(PPN[x.protocol]||x.protocol)}</button>`).join('');
+  const badge=(on,t,cls)=>`<span class="badge ${on?cls:'off'}">${esc(t)}</span>`;
+  $('#pInfo').innerHTML=[
+    p.unsupported?`<div class="row"><b>⚠ ${esc(p.unsupported)}</b></div>`:'',
+    `<div class="row"><b>${esc(PPN[cur.protocol]||cur.protocol||'')}</b> · ${esc(HOW[cur.how]||cur.how||'')}
+      ${cur.importable?badge(cur.list_checked,cur.list_checked?'danh sách máy chủ: đã kiểm tra':'danh sách: chưa kiểm tra','ok'):''}
+      ${badge(cur.connect_verified,cur.connect_verified?'đã kết nối thật':'chưa thử bằng tài khoản thật','warn')}</div>`,
+    cur.note?`<div>${esc(cur.note)}</div>`:'',
+    p.credentials?`<div><b>Lấy tài khoản:</b> ${esc(p.credentials)}</div>`:'',
+    p.account_url?`<div><a href="${esc(p.account_url)}" target="_blank" rel="noopener">${esc(p.account_url)}</a></div>`:'',
+    p.max_connections?`<div>Tối đa ${p.max_connections} kết nối cùng lúc (Proxy Farm tự giới hạn số cổng).</div>`:'',
+    p.has_account?'<div>✓ Đã lưu tài khoản — để trống ô mật khẩu để dùng lại.</div>':''].join('');
+  const can=!!cur.importable;
+  $('#pForm').hidden=!can;
+  $('#provSave').hidden=!can;
+  if(!can){ $('#pInfo').insertAdjacentHTML('beforeend',
+    `<div style="margin-top:6px">Tải file cấu hình từ trang tài khoản rồi kéo thả vào mục <a href="#providers-file">WireGuard · OpenVPN</a>.</div>`); return }
+  const wg=cur.protocol==='wireguard';
+  $('#pUP').hidden=wg; $('#pWG').hidden=!wg; $('#pTplWrap').hidden=!cur.template;
+  $('#pWgAddr').placeholder=cur.default_address||'10.x.x.x/32';
+  $('#provSave').querySelector('span').textContent='Tải máy chủ & thêm';
+}
+async function importPreset(){
+  const body={id:PSEL,protocol:PPROTO,user:$('#pUser').value,pass:$('#pPass').value,
+    wg_key:$('#pWgKey').value.trim(),wg_address:$('#pWgAddr').value.trim(),
+    template:$('#pTpl').value,per_city:Math.max(1,parseInt($('#pPer').value,10)||1)};
+  const f=$('#pWgConf').files[0]; if(f)body.wg_conf=await f.text();
+  $('#provMsg').textContent='Đang tải danh sách máy chủ…'; $('#provSave').disabled=true;
+  try{
+    const r=await fetch('/api/preset/import',{method:'POST',body:JSON.stringify(body)});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok||d.error)return toast(d.error||('Lỗi '+r.status));
+    for(const id of ['pPass','pWgKey','pWgConf','pTpl'])$('#'+id).value='';
+    PRESETS=null; await loadLocs(); loadProviders(); loadPresets();
+    toast(`Đã thêm ${d.locations} vị trí ${d.provider} — bật ở mục Thêm vị trí`);
+  }finally{ $('#provMsg').textContent=''; $('#provSave').disabled=false }
+}
+
+/* OpenVPN accounts for configs with auth-user-pass */
+function renderAuth(){
+  const list=PLIST.filter(p=>p.needs_auth);
+  $('#authwrap').hidden=!list.length;
+  $('#authlist').innerHTML=list.map(p=>`<div class="authrow" data-ap="${esc(p.id)}">
+    <div class="nm">${esc(p.title||p.name)}<small>${p.has_auth?'đã lưu: '+esc(p.auth_user||''):'chưa có tài khoản'}</small></div>
+    <input type="text" placeholder="tên đăng nhập" autocomplete="off" value="${esc(p.auth_user||'')}">
+    <input type="password" placeholder="${p.has_auth?'giữ nguyên':'mật khẩu'}" autocomplete="new-password">
+    <button class="btn ghost sm">Lưu</button></div>`).join('');
+}
+$('#authlist').addEventListener('click',async e=>{
+  const b=e.target.closest('button');if(!b)return;
+  const row=b.closest('[data-ap]'),[u,pw]=row.querySelectorAll('input');
+  const r=await fetch('/api/provider/auth',{method:'POST',body:JSON.stringify({provider:row.dataset.ap,user:u.value,pass:pw.value})});
+  const d=await r.json().catch(()=>({}));
+  if(!r.ok||d.error)return toast(d.error||('Lỗi '+r.status));
+  await loadProviders(); toast('Đã lưu tài khoản — các cổng OpenVPN của nhà cung cấp này dùng được ngay');
+});
 
 /* settings */
 const SFIELDS={proxy_user:'sUser',proxy_pass:'sPass',bind:'sBind',base_port:'sBase',
@@ -969,20 +1116,22 @@ for(const ev of ['dragleave','drop'])drop.addEventListener(ev,e=>{e.preventDefau
 drop.addEventListener('drop',e=>uploadFiles([...(e.dataTransfer?.files||[])]));
 async function uploadFiles(files){
   if(!files.length)return;
-  let ok=0,err=null;
-  for(const f of files){
-    const content=await f.text();
-    // Report the first real reason instead of a generic count: with one bad file in a
-    // batch, "1/3 nạp được" alone leaves the user guessing which line was wrong.
-    try{
-      const r=await fetch('/api/upload',{method:'POST',body:JSON.stringify({name:f.name,content})});
-      const d=await r.json();
-      if(!r.ok||d.error)err=err||`${f.name}: ${d.error||r.status}`; else ok++;
-    }catch(ex){err=err||`${f.name}: ${ex.message}`}
-  }
-  await loadLocs();renderCfgs();renderPick();loadProviders();
-  if(ok)toast(ok===files.length?`Đã nạp ${ok} cấu hình`:`Đã nạp ${ok}/${files.length} — ${err}`);
-  else toast(err||'Không nạp được file nào');
+  // One batch: a .ovpn and the ca.crt/ta.key it points at must arrive together so the
+  // manager can inline them; .zip bundles from providers are expanded server-side.
+  let d={},err=null;
+  try{
+    const body={files:await Promise.all(files.map(async f=>({name:f.name,b64:await b64(f)})))};
+    const r=await fetch('/api/upload',{method:'POST',body:JSON.stringify(body)});
+    d=await r.json().catch(()=>({}));
+    if(!r.ok||d.error)err=d.error||('Lỗi '+r.status);
+  }catch(ex){err=ex.message}
+  await loadLocs();renderCfgs();renderPick();await loadProviders();
+  const ok=(d.imported||[]).length, bad=(d.errors||[]);
+  // Report the first real reason instead of a generic count.
+  if(err)return toast(err);
+  if(ok)toast(bad.length?`Đã nạp ${ok} cấu hình — ${bad[0]}`:`Đã nạp ${ok} cấu hình`+
+    (PLIST.some(p=>p.needs_auth&&!p.has_auth)?' · cần nhập tài khoản OpenVPN bên dưới':''));
+  else toast(bad[0]||'Không nạp được file nào');
 }
 $('#picklist').addEventListener('click',e=>{const o=e.target.closest('.opt');if(!o)return;toggle(o)});
 $('#picklist').addEventListener('keydown',e=>{if(e.key===' '||e.key==='Enter'){e.preventDefault();const o=e.target.closest('.opt');if(o)toggle(o)}});
@@ -1079,8 +1228,11 @@ const WHY={
   nodata:'Gateway nhận kết nối nhưng không gửi dữ liệu về — lỗi phía HMA (app chính chủ cũng gặp), thường hết sau vài lần thử.',
   silent:'Máy điều phối của nhà cung cấp không trả lời.',
   noconnect:'Tunnel không lên được.',
-  dead:'Tunnel đang chạy thì mất kết nối.'};
-const WHY_SHORT={nodata:'không có dữ liệu',silent:'không trả lời',noconnect:'chưa lên',dead:'mất kết nối'};
+  dead:'Tunnel đang chạy thì mất kết nối.',
+  auth:'Máy chủ từ chối tên đăng nhập/mật khẩu — kiểm tra tài khoản dịch vụ (Nhà cung cấp VPN → Tài khoản OpenVPN).',
+  cert:'Không xác minh được chứng chỉ máy chủ — thiếu CA của nhà cung cấp hoặc sai ID máy chủ.'};
+const WHY_SHORT={nodata:'không có dữ liệu',silent:'không trả lời',noconnect:'chưa lên',dead:'mất kết nối',
+  auth:'sai tài khoản',cert:'lỗi chứng chỉ'};
 // What an attempt is doing right now (<key>.phase.json).
 const PHASE={queue:'Chờ lượt',handshake:'Đang bắt tay',verify:'Chờ dữ liệu'};
 const PHASE_WHY={queue:'Chờ vài giây trước khi kết nối để các cổng không bật dồn một lúc.',
