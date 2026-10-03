@@ -1,0 +1,464 @@
+{
+ "_doc": "Registry of VPN providers. 'how': import = Proxy Farm fetches the server list itself (only the account is needed); template = server list is fetched, but one config file from your account is needed as a template; manual = download configs from your account page and drop them in; unsupported = no open protocol. 'list_checked' = the public endpoint was confirmed to answer on 'checked_on'. No preset except HMA has been tested end-to-end with a real account: 'connect_verified' says so.",
+ "checked_on": "2026-10-03",
+ "presets": [
+  {
+   "id": "hma",
+   "name": "HMA (Hide My Ass)",
+   "domains": [
+    "surfeasy.mobi",
+    "hma.rocks",
+    "hidemyass.com"
+   ],
+   "max_connections": 0,
+   "account_url": "https://www.hidemyass.com/",
+   "credentials": "Không cần nhập gì: chứng chỉ thiết bị lấy từ app HMA trên máy (tab HMA / SurfEasy).",
+   "protocols": {
+    "ikev2-cert": {
+     "how": "builtin",
+     "list_checked": true,
+     "connect_verified": true,
+     "note": "115 thành phố có sẵn, dùng chứng chỉ client của app."
+    }
+   }
+  },
+  {
+   "id": "nordvpn",
+   "name": "NordVPN",
+   "domains": [
+    "nordvpn.com"
+   ],
+   "max_connections": 10,
+   "account_url": "https://my.nordaccount.com/dashboard/nordvpn/manual-configuration/",
+   "credentials": "Nord Account → NordVPN → Manual setup → Service credentials. Đây là tên/mật khẩu dịch vụ riêng (chuỗi ngẫu nhiên), KHÔNG phải email đăng nhập.",
+   "protocols": {
+    "openvpn": {
+     "how": "import",
+     "importer": "nordvpn",
+     "list_checked": true,
+     "connect_verified": false,
+     "source": "https://api.nordvpn.com/v1/servers + downloads.nordcdn.com (mẫu .ovpn)",
+     "note": "Mỗi thành phố một vị trí, gom tối đa N máy chủ tải thấp nhất."
+    },
+    "wireguard": {
+     "how": "import",
+     "importer": "nordvpn_wg",
+     "list_checked": true,
+     "connect_verified": false,
+     "default_address": "10.5.0.2/32",
+     "note": "NordLynx: cần private key WireGuard của bạn — Nord Account → NordVPN → Manual setup → WireGuard (hoặc `sudo wg show nordlynx private-key` khi app NordVPN Linux đang kết nối). Địa chỉ mặc định 10.5.0.2/32."
+    },
+    "ikev2": {
+     "how": "import",
+     "importer": "nordvpn_ikev2",
+     "list_checked": true,
+     "connect_verified": false,
+     "ca_url": "https://downloads.nordcdn.com/certificates/root.der",
+     "note": "Dùng service credentials; CA gốc của NordVPN được tải tự động."
+    }
+   }
+  },
+  {
+   "id": "surfshark",
+   "name": "Surfshark",
+   "domains": [
+    "surfshark.com"
+   ],
+   "max_connections": 0,
+   "account_url": "https://my.surfshark.com/vpn/manual-setup/main",
+   "credentials": "my.surfshark.com → VPN → Manual setup → Router/Desktop → OpenVPN/IKEv2: tên/mật khẩu dịch vụ (không phải email). WireGuard: tạo cặp khoá ở cùng trang, chép private key.",
+   "protocols": {
+    "openvpn": {
+     "how": "import",
+     "importer": "zip",
+     "zip_url": "https://my.surfshark.com/vpn/api/v1/server/configurations",
+     "enrich": "surfshark",
+     "list_checked": true,
+     "connect_verified": false
+    },
+    "wireguard": {
+     "how": "import",
+     "importer": "surfshark_wg",
+     "list_checked": true,
+     "connect_verified": false,
+     "default_address": "10.14.0.2/16",
+     "note": "Cần private key tạo ở Manual setup → WireGuard và Address trong file .conf tải về cùng lúc (thường 10.14.0.2/16). Có thể kéo thả luôn file .conf đó, farm tự lấy khoá + địa chỉ."
+    },
+    "ikev2": {
+     "how": "manual",
+     "connect_verified": false,
+     "note": "Điền máy chủ (ví dụ us-nyc.prod.surfshark.com) + service credentials ở tab IKEv2."
+    }
+   }
+  },
+  {
+   "id": "protonvpn",
+   "name": "Proton VPN",
+   "domains": [
+    "protonvpn.net",
+    "protonvpn.com"
+   ],
+   "max_connections": 10,
+   "account_url": "https://account.protonvpn.com/downloads",
+   "credentials": "account.protonvpn.com → Account → OpenVPN / IKEv2 username (tên/mật khẩu riêng, khác mật khẩu Proton). File WireGuard/OpenVPN tải ở Downloads.",
+   "protocols": {
+    "openvpn": {
+     "how": "manual",
+     "connect_verified": false,
+     "note": "Tải file .ovpn (hoặc nhiều file) ở Downloads → OpenVPN, kéo thả vào farm, rồi nhập OpenVPN username/password."
+    },
+    "wireguard": {
+     "how": "manual",
+     "connect_verified": false,
+     "note": "Tạo file .conf ở Downloads → WireGuard rồi kéo thả. Danh sách máy chủ của Proton cần đăng nhập app nên không tự nạp được."
+    },
+    "ikev2": {
+     "how": "manual",
+     "connect_verified": false,
+     "note": "Điền máy chủ + OpenVPN/IKEv2 username ở tab IKEv2."
+    }
+   }
+  },
+  {
+   "id": "pia",
+   "name": "Private Internet Access",
+   "domains": [
+    "privacy.network",
+    "privateinternetaccess.com"
+   ],
+   "max_connections": 0,
+   "account_url": "https://www.privateinternetaccess.com/account/client-control-panel",
+   "credentials": "Tên đăng nhập dạng p1234567 và mật khẩu PIA.",
+   "protocols": {
+    "openvpn": {
+     "how": "import",
+     "importer": "zip",
+     "zip_url": "https://www.privateinternetaccess.com/openvpn/openvpn.zip",
+     "enrich": "pia",
+     "list_checked": true,
+     "connect_verified": false
+    },
+    "wireguard": {
+     "how": "unsupported",
+     "note": "WireGuard của PIA phải xin khoá qua API mỗi lần kết nối (token + addKey), chưa hỗ trợ. Dùng OpenVPN."
+    },
+    "ikev2": {
+     "how": "manual",
+     "connect_verified": false,
+     "note": "Điền máy chủ (vd. us-newyorkcity.privacy.network) ở tab IKEv2."
+    }
+   }
+  },
+  {
+   "id": "mullvad",
+   "name": "Mullvad",
+   "domains": [
+    "mullvad.net"
+   ],
+   "max_connections": 5,
+   "account_url": "https://mullvad.net/en/account/wireguard-config",
+   "credentials": "mullvad.net → Account → WireGuard configuration: tạo một khoá, tải MỘT file .conf bất kỳ. Farm lấy PrivateKey + Address trong file đó rồi tự tạo cho mọi máy chủ.",
+   "protocols": {
+    "wireguard": {
+     "how": "import",
+     "importer": "mullvad_wg",
+     "list_checked": true,
+     "connect_verified": false,
+     "source": "https://api.mullvad.net/www/relays/all/"
+    },
+    "openvpn": {
+     "how": "unsupported",
+     "note": "Mullvad đã ngừng OpenVPN (2026)."
+    }
+   }
+  },
+  {
+   "id": "ivpn",
+   "name": "IVPN",
+   "domains": [
+    "ivpn.net"
+   ],
+   "max_connections": 0,
+   "account_url": "https://www.ivpn.net/account/",
+   "credentials": "OpenVPN: tên đăng nhập là Account ID (dạng i-XXXX-XXXX-XXXX), mật khẩu điền gì cũng được (ví dụ ivpn). WireGuard: tạo khoá ở Account → WireGuard, ghi lại private key và địa chỉ IP được cấp.",
+   "protocols": {
+    "openvpn": {
+     "how": "import",
+     "importer": "zip",
+     "zip_url": "https://www.ivpn.net/releases/config/ivpn-openvpn-config.zip",
+     "enrich": "ivpn",
+     "list_checked": true,
+     "connect_verified": false
+    },
+    "wireguard": {
+     "how": "import",
+     "importer": "ivpn_wg",
+     "list_checked": true,
+     "connect_verified": false,
+     "source": "https://api.ivpn.net/v5/servers.json"
+    }
+   }
+  },
+  {
+   "id": "ipvanish",
+   "name": "IPVanish",
+   "domains": [
+    "ipvanish.com"
+   ],
+   "max_connections": 0,
+   "account_url": "https://account.ipvanish.com/",
+   "credentials": "Email và mật khẩu tài khoản IPVanish.",
+   "protocols": {
+    "openvpn": {
+     "how": "import",
+     "importer": "zip",
+     "zip_url": "https://configs.ipvanish.com/configs/configs.zip",
+     "list_checked": true,
+     "connect_verified": false
+    },
+    "ikev2": {
+     "how": "manual",
+     "connect_verified": false,
+     "note": "Điền máy chủ (vd. nyc-a01.ipvanish.com) ở tab IKEv2."
+    }
+   }
+  },
+  {
+   "id": "torguard",
+   "name": "TorGuard",
+   "domains": [
+    "torguardvpnaccess.com",
+    "torguard.net"
+   ],
+   "max_connections": 8,
+   "account_url": "https://torguard.net/clientarea.php",
+   "credentials": "VPN username/password trong Client Area → My Services → Manage Credentials (khác mật khẩu đăng nhập web).",
+   "protocols": {
+    "openvpn": {
+     "how": "import",
+     "importer": "zip",
+     "zip_url": "https://torguard.net/downloads/OpenVPN-UDP.zip",
+     "list_checked": true,
+     "connect_verified": false
+    },
+    "wireguard": {
+     "how": "manual",
+     "connect_verified": false,
+     "note": "Tạo file .conf ở Client Area → Config Generator rồi kéo thả."
+    }
+   }
+  },
+  {
+   "id": "fastestvpn",
+   "name": "FastestVPN",
+   "domains": [
+    "jumptoserver.com"
+   ],
+   "max_connections": 10,
+   "account_url": "https://fastestvpn.com/",
+   "credentials": "Email/tên và mật khẩu tài khoản FastestVPN.",
+   "protocols": {
+    "openvpn": {
+     "how": "import",
+     "importer": "zip",
+     "zip_url": "https://support.fastestvpn.com/download/fastestvpn_ovpn/",
+     "list_checked": true,
+     "connect_verified": false
+    }
+   }
+  },
+  {
+   "id": "windscribe",
+   "name": "Windscribe",
+   "domains": [
+    "windscribe.com",
+    "whiskergalaxy.com"
+   ],
+   "max_connections": 0,
+   "account_url": "https://windscribe.com/getconfig/openvpn",
+   "credentials": "windscribe.com → Config Generators → OpenVPN: bấm 'Get Credentials' để lấy tên/mật khẩu riêng, và tải MỘT file .ovpn bất kỳ làm mẫu (chứa CA và khoá TLS).",
+   "protocols": {
+    "openvpn": {
+     "how": "template",
+     "importer": "windscribe",
+     "list_checked": true,
+     "connect_verified": false,
+     "source": "https://assets.windscribe.com/serverlist/openvpn/0/ef",
+     "note": "Farm lấy danh sách vùng công khai và nhân file mẫu ra cho mọi vùng (cần gói Pro cho vùng trả phí)."
+    },
+    "wireguard": {
+     "how": "manual",
+     "connect_verified": false,
+     "note": "Tạo file .conf ở Config Generators → WireGuard rồi kéo thả."
+    }
+   }
+  },
+  {
+   "id": "cyberghost",
+   "name": "CyberGhost",
+   "domains": [
+    "cg-dialup.net",
+    "cyberghostvpn.com"
+   ],
+   "max_connections": 7,
+   "account_url": "https://my.cyberghostvpn.com/",
+   "credentials": "my.cyberghostvpn.com → VPN → Manage Devices → Configure new device → OpenVPN: chọn nước, tải file zip; tên/mật khẩu riêng hiện ngay trên trang đó.",
+   "protocols": {
+    "openvpn": {
+     "how": "manual",
+     "connect_verified": false,
+     "note": "Kéo thả nguyên file .zip tải về (có ca.crt, client.crt, client.key) — farm tự nhúng các file đó vào cấu hình."
+    },
+    "wireguard": {
+     "how": "manual",
+     "connect_verified": false,
+     "note": "Tải file .conf ở cùng trang rồi kéo thả."
+    }
+   }
+  },
+  {
+   "id": "expressvpn",
+   "name": "ExpressVPN",
+   "domains": [
+    "expressnetw.com",
+    "expressvpn.com"
+   ],
+   "max_connections": 8,
+   "account_url": "https://www.expressvpn.com/setup#manual",
+   "credentials": "expressvpn.com/setup → Manual Configuration → OpenVPN: tên/mật khẩu riêng hiện ở đó, tải file .ovpn theo từng vị trí.",
+   "protocols": {
+    "openvpn": {
+     "how": "manual",
+     "connect_verified": false,
+     "note": "Chỉ chạy được bằng file OpenVPN thủ công. Lightway là giao thức độc quyền, không hỗ trợ."
+    }
+   },
+   "unsupported": "Lightway (giao thức độc quyền)"
+  },
+  {
+   "id": "purevpn",
+   "name": "PureVPN",
+   "domains": [
+    "pointtoserver.com",
+    "purevpn.net",
+    "purevpn.com"
+   ],
+   "max_connections": 10,
+   "account_url": "https://my.purevpn.com/",
+   "credentials": "Member area → Manual configuration: tên/mật khẩu VPN riêng (thường dạng purevpn0s…) và gói file .ovpn.",
+   "protocols": {
+    "openvpn": {
+     "how": "manual",
+     "connect_verified": false,
+     "note": "Kéo thả file .ovpn/.zip tải ở member area."
+    },
+    "wireguard": {
+     "how": "manual",
+     "connect_verified": false,
+     "note": "Tạo file .conf ở member area rồi kéo thả."
+    },
+    "ikev2": {
+     "how": "manual",
+     "connect_verified": false
+    }
+   }
+  },
+  {
+   "id": "vyprvpn",
+   "name": "VyprVPN",
+   "domains": [
+    "vyprvpn.com",
+    "goldenfrog.com"
+   ],
+   "max_connections": 10,
+   "account_url": "https://support.vyprvpn.com/",
+   "credentials": "Email và mật khẩu VyprVPN. File OpenVPN tải ở trang hỗ trợ (mục Manual setup).",
+   "protocols": {
+    "openvpn": {
+     "how": "manual",
+     "connect_verified": false,
+     "note": "Kéo thả file .ovpn/.zip."
+    },
+    "ikev2": {
+     "how": "manual",
+     "connect_verified": false
+    }
+   },
+   "unsupported": "Chameleon (giao thức độc quyền)"
+  },
+  {
+   "id": "hideme",
+   "name": "hide.me",
+   "domains": [
+    "hide.me",
+    "hideservers.net"
+   ],
+   "max_connections": 10,
+   "account_url": "https://member.hide.me/",
+   "credentials": "Tên/mật khẩu tài khoản hide.me. File OpenVPN/WireGuard tải ở member area → Manual setup.",
+   "protocols": {
+    "openvpn": {
+     "how": "manual",
+     "connect_verified": false
+    },
+    "wireguard": {
+     "how": "manual",
+     "connect_verified": false
+    },
+    "ikev2": {
+     "how": "manual",
+     "connect_verified": false
+    }
+   }
+  },
+  {
+   "id": "airvpn",
+   "name": "AirVPN",
+   "domains": [
+    "airvpn.org",
+    "vpn.airdns.org"
+   ],
+   "max_connections": 5,
+   "account_url": "https://airvpn.org/generator/",
+   "credentials": "airvpn.org → Client Area → Config Generator. File OpenVPN của AirVPN xác thực bằng chứng chỉ trong file nên không cần mật khẩu.",
+   "protocols": {
+    "openvpn": {
+     "how": "manual",
+     "connect_verified": false,
+     "note": "Chọn nhiều máy chủ, tải .zip rồi kéo thả."
+    },
+    "wireguard": {
+     "how": "manual",
+     "connect_verified": false
+    }
+   }
+  },
+  {
+   "id": "privadovpn",
+   "name": "PrivadoVPN",
+   "domains": [
+    "privado.io"
+   ],
+   "max_connections": 10,
+   "account_url": "https://privadovpn.com/",
+   "credentials": "Tên/mật khẩu tài khoản PrivadoVPN.",
+   "protocols": {
+    "openvpn": {
+     "how": "manual",
+     "connect_verified": false,
+     "note": "Gói https://privadovpn.com/apps/ovpn_configs.zip tải được công khai nhưng tên file không ghi quốc gia; kéo thả nó vào farm (quốc gia ghi 'XX', sửa tay nếu cần)."
+    }
+   }
+  },
+  {
+   "id": "hotspotshield",
+   "name": "Hotspot Shield",
+   "domains": [],
+   "max_connections": 0,
+   "account_url": "https://www.hotspotshield.com/",
+   "credentials": "",
+   "protocols": {},
+   "unsupported": "Chỉ có giao thức độc quyền Hydra/Catapult, không cung cấp file OpenVPN/WireGuard — không thể hỗ trợ."
+  }
+ ]
+}

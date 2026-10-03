@@ -186,6 +186,12 @@ driver_up
   echo "  listener:"
   echo "    type: tcp"
   echo "  resolver: doh"
+  # Low-resource mode: gost logs every connection at info level, which on a busy port is
+  # a steady stream of disk writes into docker's log file. Keep only warnings.
+  if [ "${LOW_RESOURCE:-}" = 1 ]; then
+    echo "log:"
+    echo "  level: warn"
+  fi
 } > /run/gost.yaml
 gost -C /run/gost.yaml &
 GOST=$!
@@ -218,6 +224,9 @@ check() {
 }
 # Mark the current gateway IP as silent; back off only if the location has no other IP.
 mark_bad() {
+  # A rejected account or untrusted certificate is not the gateway's fault: another IP
+  # of the same provider would fail the same way, so just back off.
+  case "$(cat /run/why 2>/dev/null)" in auth|cert) echo $(( FAILS + 1 )) > /run/fails; return 0 ;; esac
   echo "$(cat /run/server_ip) $(date +%s)" >> "$BADIPS"
   cut -d' ' -f1 "$BADIPS" > /run/badlist
   if [ -n "$(grep -vxF -f /run/badlist /run/candidates 2>/dev/null)" ]; then

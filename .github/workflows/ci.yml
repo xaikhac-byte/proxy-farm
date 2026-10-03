@@ -1,0 +1,34 @@
+name: ci
+on:
+  push:
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Shell syntax + shellcheck
+        run: |
+          sh -n node/entrypoint.sh node/drivers/*.sh run.sh tests/*.sh
+          shellcheck -S warning -s sh -e SC2034 node/entrypoint.sh node/drivers/*.sh tests/*.sh run.sh
+      - name: Python compile + unit tests
+        run: |
+          python3 -m py_compile manager/farm.py manager/providers.py
+          python3 -c "import json; [json.load(open(f)) for f in ('manager/presets.json','manager/countries.json')]"
+          python3 -m unittest discover -s tests -v
+      - name: UI script syntax
+        run: |
+          python3 -c "import re;s=open('manager/ui.html').read();open('/tmp/ui.js','w').write('\n'.join(re.findall(r'<script>(.*?)</script>',s,re.S)))"
+          node --check /tmp/ui.js
+      - name: PowerShell parse (run.ps1)
+        shell: pwsh
+        run: |
+          $e = $null; $t = $null
+          [void][System.Management.Automation.Language.Parser]::ParseFile("$PWD/run.ps1", [ref]$t, [ref]$e)
+          if ($e) { $e | ForEach-Object { Write-Error ("{0}: {1}" -f $_.Extent.StartLineNumber, $_.Message) }; exit 1 }
+      - name: OpenVPN sanitizer
+        run: sh tests/test_openvpn_sanitize.sh
+      - name: Build images
+        run: |
+          docker build -t proxy-farm-node node
+          docker build -t proxy-farm-manager manager

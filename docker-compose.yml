@@ -40,12 +40,21 @@ services:
       # The manager starts port containers through the host's Docker, so it needs the
       # host-side path of every folder it mounts into them.
       PF_STATUS_DIR: /status
-      PF_STATUS_HOST: ${FARM}/status
+      # FARM_HOST: the same folder as the Docker daemon names it. Only differs on Windows
+      # (run.ps1 sets /run/desktop/mnt/host/c/... for C:\...), elsewhere it is FARM.
+      PF_STATUS_HOST: ${FARM_HOST:-${FARM}}/status
       PF_CONFIG_DIR: /configs
-      PF_CONFIG_HOST: ${FARM}/configs
+      PF_CONFIG_HOST: ${FARM_HOST:-${FARM}}/configs
       PF_SECRETS_DIR: /secrets
-      PF_SECRETS: ${FARM}/secrets
+      PF_SECRETS: ${FARM_HOST:-${FARM}}/secrets
       PF_INBOX: /inbox
       PF_INBOX_HOST: ${FARM}/inbox
       PF_SCAN: /scan
       PF_SCAN_HOST: ${SCAN}
+      # Weak PC: LOW_RESOURCE=1 caps every port's RAM/CPU and allows MAX_ACTIVE ports
+      # on at once (default 3). Both can be changed later in the UI (Settings).
+      PF_LOW_RESOURCE: ${LOW_RESOURCE:-0}
+      PF_MAX_ACTIVE: ${MAX_ACTIVE:-}
+    # The manager is a small Python process (~20-30 MiB measured); the cap only stops a
+    # runaway from eating a low-RAM machine.
+    mem_limit: ${MANAGER_MEM:-256m}
