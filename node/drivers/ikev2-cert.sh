@@ -51,6 +51,7 @@ driver_up() {
 config setup
     logfile=/dev/stderr
     plutodebug=none
+$( [ "${LOW_RESOURCE:-}" = 1 ] && echo "    nhelpers=1" )
 
 conn vpn
     keyexchange=ikev2

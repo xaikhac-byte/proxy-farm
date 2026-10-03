@@ -186,6 +186,12 @@ driver_up
   echo "  listener:"
   echo "    type: tcp"
   echo "  resolver: doh"
+  # Low-resource mode: gost logs every connection at info level, which on a busy port is
+  # a steady stream of disk writes into docker's log file. Keep only warnings.
+  if [ "${LOW_RESOURCE:-}" = 1 ]; then
+    echo "log:"
+    echo "  level: warn"
+  fi
 } > /run/gost.yaml
 gost -C /run/gost.yaml &
 GOST=$!

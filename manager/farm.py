@@ -476,18 +476,28 @@ def usage(run=None):
             out[lk] = out.get(lk, 0) + 1
     return out
 
+def max_active():
+    """Global cap on ports switched on at once (0 = none). Only enforced when set; the
+    low-resource mode defaults it to 3."""
+    st = load_settings()
+    return int(st.get("max_active") or 0)
+
 def over_quota(targets):
-    """Split targets into those allowed to start now and those the cap refuses."""
+    """Split targets into those allowed to start now and those a cap refuses: the
+    provider's simultaneous-connection limit, or the farm-wide max_active."""
     run = running_containers(); used = usage(run)
+    total, cap = sum(used.values()), max_active()
     ok, refused = [], []
     for t in targets:
         if (run.get(t["key"]) or {}).get("state") in ("running", "restarting"):
             ok.append(t); continue                    # already counted; recreating is free
         lk = limit_key(t); lim = limit_for(lk)
+        if cap and total >= cap:
+            refused.append({"key": t["key"], "provider": "_all", "limit": cap}); continue
         if lim and used.get(lk, 0) >= lim:
             refused.append({"key": t["key"], "provider": lk, "limit": lim})
         else:
-            used[lk] = used.get(lk, 0) + 1; ok.append(t)
+            used[lk] = used.get(lk, 0) + 1; total += 1; ok.append(t)
     return ok, refused
 
 def providers_list():
@@ -550,6 +560,7 @@ CREDS_FILE = os.path.join(os.path.dirname(STATE_FILE), "creds.json")   # pre-set
 
 # Environment gives the defaults; settings.json (written by the UI) overrides them, so a
 # user who never opens Settings behaves exactly as the docker run flags say.
+_LOW = os.environ.get("PF_LOW_RESOURCE", "").lower() in ("1", "true", "yes", "on")
 DEFAULTS = {
     "proxy_user": os.environ.get("PF_PROXY_USER", "proxy"),
     "proxy_pass": os.environ.get("PF_PROXY_PASS", ""),
@@ -563,6 +574,12 @@ DEFAULTS = {
     # when a gateway lifts its block. Giving up for good is therefore opt-in.
     "give_up_after": int(os.environ.get("PF_GIVE_UP_AFTER", "0")),
     "dns": os.environ.get("PF_TUNNEL_DNS", "1.1.1.1 8.8.8.8"),
+    # Low-resource mode (weak PC / Docker Desktop with little RAM): every port gets a hard
+    # memory cap and a single-threaded Go runtime, and only `max_active` ports may be on
+    # at once. Measured: ~16 MiB per WireGuard port, ~13 MiB OpenVPN, ~17 MiB IKEv2.
+    "low_resource": _LOW,
+    "max_active": int(os.environ.get("PF_MAX_ACTIVE") or (3 if _LOW else 0)),
+    "port_mem_mb": int(os.environ.get("PF_PORT_MEM_MB") or 64),
 }
 SETTABLE = [k for k in DEFAULTS if k != "rotate_key"]
 
@@ -649,6 +666,13 @@ def up(keys):
                 "-v", f"{STATUS_DIR_HOST}:/status",
                 "-p", f"{st['bind']}:{port}:1080",
                 "--label", "proxy-farm.port=1", "--label", f"proxy-farm.key={k}"]
+        if st.get("low_resource"):
+            mb = max(32, int(st.get("port_mem_mb") or 64))
+            # Hard cap (no swap on top) + one OS thread for gost's Go runtime, which
+            # otherwise starts a thread per CPU; GOGC=50 returns memory sooner.
+            args += ["--memory", f"{mb}m", "--memory-swap", f"{mb}m",
+                     "--cpus", "0.5", "-e", "GOMAXPROCS=1", "-e", "GOGC=50",
+                     "-e", f"GOMEMLIMIT={max(16, mb // 2)}MiB", "-e", "LOW_RESOURCE=1"]
         if COMPOSE_PROJECT:   # group the ports under the compose project in Docker Desktop
             args += ["--label", f"com.docker.compose.project={COMPOSE_PROJECT}",
                      "--label", "com.docker.compose.service=port",
@@ -1108,6 +1132,7 @@ class H(http.server.BaseHTTPRequestHandler):
             c = load_creds()
             return self._send(200, json.dumps({
                 "rows": ls(as_json=True), "bind": load_settings()["bind"],
+                "low_resource": load_settings()["low_resource"], "max_active": max_active(),
                 "auth": {"user": c["user"], "pass": c["pass"]},
                 "rotate_key": rotate_key()}))
         if p == "/api/discover":
@@ -1196,11 +1221,19 @@ class H(http.server.BaseHTTPRequestHandler):
             st = load_settings()
             changed = {k: v for k, v in (data.get("settings") or {}).items()
                        if k in SETTABLE and v not in ("", None) and v != st[k]}
-            for k in ("base_port", "mtu", "watchdog_interval", "watchdog_fails"):
+            if "low_resource" in changed:
+                changed["low_resource"] = str(changed["low_resource"]).lower() in ("1", "true", "yes", "on")
+                if changed["low_resource"] == st["low_resource"]: changed.pop("low_resource")
+            for k in ("base_port", "mtu", "watchdog_interval", "watchdog_fails", "max_active", "port_mem_mb"):
                 if k in changed:
                     try: changed[k] = int(changed[k])
                     except ValueError: return self._send(400, json.dumps(
                         {"error": f"{k} phải là số"}))
+            changed = {k: v for k, v in changed.items() if v != st.get(k)}
+            # Turning the low-resource mode on without a cap would only do half the job.
+            if changed.get("low_resource") is True and not st.get("max_active") \
+                    and "max_active" not in changed:
+                changed["max_active"] = 3
             if data.get("new_rotate_key"):
                 import secrets as _s
                 changed["rotate_key"] = _s.token_urlsafe(16)
@@ -1210,7 +1243,7 @@ class H(http.server.BaseHTTPRequestHandler):
             # base_port only affects ports created later; rotate_key lives in the manager
             # alone. Neither is baked into a running container, so neither needs a restart.
             needs = [k for k in changed if k not in
-                     ("base_port", "rotate_key", "give_up_after")]
+                     ("base_port", "rotate_key", "give_up_after", "max_active")]
             restarted = []
             if needs and data.get("restart"):
                 # Only ports that are on: recreating a stopped one would switch it on

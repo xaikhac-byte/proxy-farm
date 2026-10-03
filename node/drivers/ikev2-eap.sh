@@ -50,6 +50,8 @@ driver_up() {
   # Our own resolv.conf stays: pushed DNS often black-holes, and gost uses DoH anyway.
   cat > /etc/strongswan.conf <<EOC
 charon {
+  # One tunnel per container: the default 16 worker threads are only memory.
+  threads = 4
   load_modular = yes
   install_virtual_ip = yes
   filelog {
