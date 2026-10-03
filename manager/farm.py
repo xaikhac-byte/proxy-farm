@@ -1,18 +1,25 @@
 #!/usr/bin/env python3
 """
-HMA Proxy Farm manager — turns one HMA (SurfEasy/Gen) subscription into many
-per-location SOCKS5/HTTP proxy ports, each a Docker container running an IKEv2
-tunnel + gost (see ../node). Host-side: shells out to `docker`.
+Proxy Farm manager — turns a VPN account (HMA certificate, WireGuard, OpenVPN or IKEv2
+username/password, from any provider) into many per-location SOCKS5/HTTP proxy ports,
+each a Docker container running one tunnel + gost (see ../node). Host-side: shells out
+to `docker`. Provider presets and server-list importers live in providers.py.
 
-  python3 farm.py serve                 # web UI on :8080 (default)
+  python3 farm.py serve                  # web UI on :8090 (default)
   python3 farm.py up <KEY|CC> ...        # start tunnels for locations/countries
   python3 farm.py down [KEY ...]         # stop (all if none given)
   python3 farm.py ls                     # list running proxies + exit IPs
   python3 farm.py rotate <KEY>           # reconnect (new gateway IP)
+  python3 farm.py presets                # providers Proxy Farm knows, and how to add them
+  python3 farm.py import <PRESET> [openvpn|wireguard|ikev2] [per-city]
+                                         # fetch a provider's server list (asks for the account)
+  python3 farm.py auth <PROVIDER> [USER]  # store OpenVPN username/password for a provider
+  python3 farm.py add <FILE...>          # import .ovpn/.conf/.zip files (ca.crt etc. alongside)
 
 State: farm-state.json (chosen locations -> assigned port). Ports from BASE_PORT.
 """
 import json, os, re, base64, subprocess, sys, time, threading, http.server, urllib.parse, socket
+import providers as P
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 LOCS = json.load(open(os.path.join(HERE, "locations.json")))
@@ -55,28 +62,44 @@ for l in LOCS["locations"]:
     CATALOG.append({**l, "provider": "hma", "protocol": "ikev2-cert",
                     "label": l["countryName"] + " " + l["city"]})
 
-def detect_protocol(text):
-    if "[Interface]" in text and "PrivateKey" in text: return "wireguard"
-    if re.search(r"^\s*remote\s+\S+", text, re.M): return "openvpn"
-    return None
+detect_protocol = P.detect_protocol
 
 _CC = {f[:-4].upper() for f in os.listdir(FLAGS_DIR) if f.endswith(".png")} \
       if os.path.isdir(FLAGS_DIR) else set()
 CC_NAME = {l["country"]: l["countryName"] for l in CATALOG}
 
-def guess_provider(name):
-    """Best-effort provider from a filename like 'mullvad-se-got.conf' -> 'mullvad'."""
-    for tok in re.split(r"[^A-Za-z]+", os.path.basename(name)):
-        if len(tok) > 2 and tok.upper() not in _CC:
-            return tok.lower()
+_NOT_PROVIDER = {"udp", "tcp", "ovpn", "conf", "openvpn", "wireguard", "config", "vpn",
+                 "server", "prod", "com", "net", "default", "client", "free", "secure"}
+
+def guess_provider(name, content=""):
+    """Best-effort provider. The servers a config points at say it best
+    ('uk765.nordvpn.com' -> nordvpn); otherwise the first word of the filename
+    ('mullvad-se-got.conf' -> 'mullvad')."""
+    hosts = [h for h, _, _ in P.parse_remotes(content)] if content else []
+    m = re.search(r"^[ \t]*Endpoint[ \t]*=[ \t]*\[?([^\]\s:]+)", content or "", re.M)
+    if m: hosts.append(m.group(1))
+    by_host = P.provider_from_hosts(hosts)
+    if by_host: return by_host
+    toks = [t for t in re.split(r"[^A-Za-z]+", os.path.basename(name).lower()) if t]
+    for t in toks:                    # a known provider anywhere in the name wins
+        if t in P.PRESET_BY_ID: return t
+    for tok in toks:
+        if tok.upper() in _CC or P.cc_from_token(tok) or P._norm(tok) in P._NAME_TO_CC:
+            break                     # 'nl-amsterdam.ovpn': what follows a country is a city
+        if len(tok) > 2 and tok not in _NOT_PROVIDER:
+            return tok
+    # Unknown provider but a real hostname: 'nl1.myvpn.net' -> 'myvpn'
+    for h in hosts:
+        parts = h.lower().rstrip(".").split(".")
+        if len(parts) >= 2 and not parts[-1].isdigit() and re.fullmatch(r"[a-z0-9-]{3,}", parts[-2]):
+            return parts[-2]
     return "custom"
 
-def guess_country(name):
-    """Best-effort 2-letter country from a filename like 'mullvad-se-got.conf'."""
-    for tok in re.split(r"[^A-Za-z]+", os.path.basename(name)):
-        if len(tok) == 2 and tok.upper() in _CC:
-            return tok.upper()
-    return "XX"
+def guess_country(name, content=""):
+    """Best-effort 2-letter country from a filename ('mullvad-se-got.conf',
+    'TorGuard.USA-NEW-YORK.ovpn', 'us_new_york.ovpn') or the server name in it."""
+    hosts = [h for h, _, _ in P.parse_remotes(content)] if content else []
+    return P.guess_location(name, hosts)[0]
 
 def config_targets():
     out = []
@@ -86,15 +109,16 @@ def config_targets():
         try: meta = json.load(open(meta_p))
         except Exception: meta = {}
         stem = re.sub(r"[^A-Za-z0-9]+", "-", fn.rsplit(".", 1)[0]).strip("-").upper()
+        cc = meta.get("country") or guess_country(fn)
         out.append({
             "key": "CFG-" + stem,
             "provider": meta.get("provider") or "custom",
             "protocol": meta.get("protocol") or ("wireguard" if fn.endswith(".conf") else "openvpn"),
             "config": fn,
-            "country": meta.get("country") or guess_country(fn),
+            "country": cc,
             "city": meta.get("city") or fn.rsplit(".", 1)[0],
-            "countryName": meta.get("countryName") or CC_NAME.get(
-                meta.get("country") or guess_country(fn), "Tự nạp"),
+            "countryName": meta.get("countryName") or CC_NAME.get(cc) or P.country_name(cc) or "Tự nạp",
+            "needs_auth": bool(meta.get("needs_auth")),
             "label": fn,
         })
     return out
@@ -110,6 +134,40 @@ def save_providers(p):
     os.chmod(PROVIDERS_FILE, 0o600)
 
 def slug(t): return re.sub(r"[^A-Za-z0-9]+", "-", t).strip("-").upper() or "X"
+
+# ---- OpenVPN accounts ------------------------------------------------------------
+# One username/password per provider, shared by every config of that provider. Kept in
+# SECRETS_DIR/auth/<provider>.txt (0600) and bind-mounted read-only into exactly the ports
+# that need it, so the password never sits in `docker inspect` or another port's view.
+def _pid(p): return re.sub(r"[^a-z0-9_-]+", "-", (p or "custom").lower()).strip("-") or "custom"
+
+def auth_file(provider, host=False):
+    return os.path.join(SECRETS if host else SECRETS_DIR, "auth", _pid(provider) + ".txt")
+
+def has_account(provider):
+    return os.path.exists(auth_file(provider))
+
+def set_account(provider, user, password):
+    user = (user or "").strip()
+    if not user or not password:
+        raise ValueError("Cần đủ tên đăng nhập và mật khẩu")
+    if "\n" in user or "\n" in password:
+        raise ValueError("Tên/mật khẩu không được chứa xuống dòng")
+    d = os.path.dirname(auth_file(provider))
+    os.makedirs(d, exist_ok=True); os.chmod(d, 0o700)
+    path = auth_file(provider)
+    with open(path, "w") as f: f.write(f"{user}\n{password}\n")
+    os.chmod(path, 0o600)
+    prov = load_providers()
+    prov.setdefault("accounts", {})[_pid(provider)] = {"user": user, "set": int(time.time())}
+    save_providers(prov)
+    return {"provider": _pid(provider), "user": user}
+
+def delete_account(provider):
+    try: os.remove(auth_file(provider))
+    except OSError: pass
+    prov = load_providers()
+    if prov.get("accounts", {}).pop(_pid(provider), None) is not None: save_providers(prov)
 
 def hma_status():
     """What the UI shows for the HMA/SurfEasy card: is the device certificate present,
@@ -211,9 +269,13 @@ def ingest_inbox():
                 import_hma(token_text=open(path, encoding="utf-8").read())
                 done.append(("hma", fn))
             elif fn.endswith((".conf", ".ovpn")):
-                save_config(fn, open(path, encoding="utf-8").read())
+                save_config(fn, open(path, encoding="utf-8").read(), assets=INBOX)
                 os.remove(path)
                 done.append(("config", fn))
+            elif fn.lower().endswith(".zip"):
+                save_bundle(fn, open(path, "rb").read())
+                os.remove(path)
+                done.append(("bundle", fn))
         except Exception as e:
             print(f"inbox: bỏ qua {fn}: {e}", flush=True)
     if done: print("inbox: đã nạp " + ", ".join(f for _, f in done), flush=True)
@@ -254,7 +316,9 @@ def import_found(paths):
         rp = os.path.realpath(fp)
         if not SCAN_DIR or not rp.startswith(os.path.realpath(SCAN_DIR) + os.sep): continue
         try:
-            save_config(os.path.basename(rp), open(rp, encoding="utf-8").read())
+            # ca.crt / ta.key next to the .ovpn get inlined; nothing else is read.
+            save_config(os.path.basename(rp), open(rp, encoding="utf-8").read(),
+                        assets=os.path.dirname(rp))
             ok.append(os.path.basename(rp))
         except Exception as e:
             print(f"import: {rp}: {e}", flush=True)
@@ -266,24 +330,45 @@ def eap_targets():
         out.append({"key": "EAP-" + e["id"], "provider": e.get("name") or "ikev2",
                     "protocol": "ikev2-eap", "fqdn": e["server"],
                     "eap_user": e.get("user"), "eap_pass": e.get("pass"),
-                    "server_id": e.get("server_id"),
+                    "server_id": e.get("server_id"), "ca": e.get("ca"),
                     "country": e.get("country") or "XX",
                     "city": e.get("city") or e["server"],
-                    "countryName": CC_NAME.get(e.get("country") or "", "Tự nạp"),
+                    "countryName": CC_NAME.get(e.get("country") or "") or
+                                   P.country_name(e.get("country")) or "Tự nạp",
                     "label": e["server"]})
     return out
 
-def add_eap(d):
+def save_ca(name, data):
+    """Store a provider's CA (PEM or DER bytes) as SECRETS_DIR/ca-eap-<name>.pem; returns
+    the file name. IKEv2 ports that reference it trust only this CA for the gateway."""
+    pem = P.ca_to_pem(data)
+    r = subprocess.run(["openssl", "x509", "-noout", "-subject"], input=pem, text=True,
+                       capture_output=True, timeout=10)
+    if r.returncode != 0:
+        raise ValueError("File CA không phải chứng chỉ X.509 hợp lệ")
+    os.makedirs(SECRETS_DIR, exist_ok=True)
+    fn = "ca-eap-" + _pid(name) + ".pem"
+    path = os.path.join(SECRETS_DIR, fn)
+    with open(path, "w") as f: f.write(pem)
+    os.chmod(path, 0o600)
+    return fn
+
+def add_eap(d, save=True):
     for f in ("server", "user", "pass"):
         if not (d.get(f) or "").strip():
             raise ValueError("Cần đủ máy chủ, tên đăng nhập và mật khẩu")
     prov = load_providers()
     name = (d.get("name") or d["server"].split(".")[0]).strip()
+    ca = d.get("ca_file") or None
+    if d.get("ca"):          # uploaded from the UI as base64 (PEM or DER)
+        try: raw = base64.b64decode(d["ca"])
+        except Exception: raise ValueError("File CA hỏng")
+        ca = save_ca(name, raw)
     e = {"id": slug(name + "-" + d["server"]), "name": name,
          "server": d["server"].strip(), "user": d["user"].strip(), "pass": d["pass"],
          "server_id": (d.get("server_id") or "").strip() or None,
          "country": (d.get("country") or "").strip().upper()[:2] or None,
-         "city": (d.get("city") or "").strip() or None}
+         "city": (d.get("city") or "").strip() or None, "ca": ca}
     prov.setdefault("eap", [])
     prov["eap"] = [x for x in prov["eap"] if x["id"] != e["id"]] + [e]
     save_providers(prov)
@@ -302,19 +387,69 @@ def delete_provider(pid):
         if gone:
             down(["EAP-" + e["id"] for e in gone])
             prov["eap"] = [e for e in prov["eap"] if slug(e["name"]) != pid]
+            for ca in {e.get("ca") for e in gone if e.get("ca")}:
+                if not any(e.get("ca") == ca for e in prov["eap"]):
+                    try: os.remove(os.path.join(SECRETS_DIR, ca))
+                    except OSError: pass
         else:   # a file-based provider: every config tagged with this name
             for t in config_targets():
                 if t["provider"] == pid: delete_config(t["key"])
+            save_providers(prov)
+            delete_account(pid)
+            return
     save_providers(prov)
+
+def presets_list():
+    """The registry as the UI needs it: what each provider supports, whether Proxy Farm
+    can fetch its servers, and whether an account is already stored."""
+    out = []
+    for pre in P.PRESETS:
+        protos = []
+        for k, v in pre.get("protocols", {}).items():
+            protos.append({"protocol": k, "how": v.get("how"), "note": v.get("note", ""),
+                           "importable": v.get("how") in ("import", "template"),
+                           "template": v.get("how") == "template",
+                           "list_checked": bool(v.get("list_checked")),
+                           "connect_verified": bool(v.get("connect_verified")),
+                           "default_address": v.get("default_address", "")})
+        out.append({"id": pre["id"], "name": pre["name"], "protocols": protos,
+                    "credentials": pre.get("credentials", ""),
+                    "account_url": pre.get("account_url", ""),
+                    "unsupported": pre.get("unsupported", ""),
+                    "max_connections": pre.get("max_connections", 0),
+                    "has_account": has_account(pre["id"])})
+    return out
+
+def upload_batch(files, provider=None):
+    """Files dropped together: ca.crt / ta.key / client.key are kept in memory and inlined
+    into the .ovpn files of the same batch; .zip bundles are expanded."""
+    assets, configs, zips, errors, done = {}, [], [], [], []
+    for f in files:
+        name = os.path.basename(f.get("name") or "file")
+        try:
+            raw = base64.b64decode(f["b64"]) if f.get("b64") else (f.get("content") or "").encode()
+        except Exception:
+            errors.append(f"{name}: hỏng"); continue
+        if name.lower().endswith(".zip"): zips.append((name, raw))
+        elif name.lower().endswith((".ovpn", ".conf")) or \
+                detect_protocol(raw.decode("utf-8", "ignore")): configs.append((name, raw))
+        else: assets[name] = raw
+    for name, raw in zips:
+        try: done += [it["name"] for it in save_bundle(name, raw, provider)]
+        except Exception as e: errors.append(f"{name}: {e}")
+    for name, raw in configs:
+        try:
+            save_config(name, raw.decode("utf-8", "replace"), provider, assets=assets)
+            done.append(name)
+        except Exception as e: errors.append(f"{name}: {e}")
+    return {"imported": done, "errors": errors}
 
 # ---- per-provider port limits --------------------------------------------------
 # Most providers cap simultaneous connections per account, so the farm refuses to start
 # more than the cap rather than let the provider kick sessions. 0 = no limit.
 # HMA: no limit — 20+ concurrent ran stable; what broke big farms was stuck reconnects,
 # not the count. HMA ends every session after ~4.5 h; the watchdog reconnects in seconds.
-DEFAULT_LIMITS = {"hma": 0, "protonvpn": 10, "proton": 10, "nordvpn": 10, "mullvad": 5,
-                  "expressvpn": 8, "cyberghost": 7, "surfshark": 0, "pia": 0,
-                  "ipvanish": 0, "windscribe": 0, "custom": 0}
+DEFAULT_LIMITS = {**P.default_limits(), "hma": 0, "proton": 10, "custom": 0}
 
 def limit_key(t):
     return "hma" if t.get("protocol") == "ikev2-cert" else (t.get("provider") or "custom").lower()
@@ -360,15 +495,26 @@ def providers_list():
             "note": "Chứng chỉ thiết bị từ app", **hma_status()}]
     by_file = {}
     for t in config_targets():
+        pre = P.preset(t["provider"])
         p = by_file.setdefault(t["provider"], {"id": t["provider"], "kind": t["protocol"],
-                                               "name": t["provider"], "ready": True,
-                                               "note": "File cấu hình", "locations": 0})
+                                               "name": t["provider"],
+                                               "title": pre["name"] if pre else t["provider"],
+                                               "ready": True, "note": "File cấu hình",
+                                               "locations": 0, "needs_auth": False})
         p["locations"] += 1
+        if t["protocol"] != p["kind"]: p["kind"] = "mixed"
+        if t.get("needs_auth"): p["needs_auth"] = True
+    for p in by_file.values():
+        if p["needs_auth"]:
+            p["has_auth"] = has_account(p["id"])
+            acct = load_providers().get("accounts", {}).get(_pid(p["id"]))
+            p["auth_user"] = (acct or {}).get("user")
     out += sorted(by_file.values(), key=lambda p: p["name"])
     by_acct = {}
     for e in load_providers().get("eap", []):
         p = by_acct.setdefault(slug(e["name"]), {"id": slug(e["name"]), "kind": "ikev2-eap",
                                                  "name": e["name"], "ready": True,
+                                                 "title": (P.preset(e["name"]) or {}).get("name"),
                                                  "note": e["user"], "locations": 0})
         p["locations"] += 1
     out += sorted(by_acct.values(), key=lambda p: p["name"])
@@ -510,35 +656,136 @@ def up(keys):
         if proto in ("wireguard", "openvpn"):
             args += ["-e", f"CONFIG=/config/{l['config']}",
                      "-v", f"{CONFIG_DIR_HOST}:/config:ro"]
-            for env in ("OVPN_USER", "OVPN_PASS"):
-                if os.environ.get(env): args += ["-e", f"{env}={os.environ[env]}"]
+            if proto == "openvpn" and has_account(l.get("provider")):
+                args += ["-v", f"{auth_file(l.get('provider'), host=True)}:/auth/ovpn.auth:ro",
+                         "-e", "OVPN_AUTH_FILE=/auth/ovpn.auth"]
+            else:
+                for env in ("OVPN_USER", "OVPN_PASS"):
+                    if os.environ.get(env): args += ["-e", f"{env}={os.environ[env]}"]
         else:  # ikev2-cert / ikev2-eap
             args += ["-e", f"SERVER={l['fqdn']}", "-v", f"{SECRETS}:/secrets:ro"]
             for env, field in (("EAP_USER", "eap_user"), ("EAP_PASS", "eap_pass"),
                                ("SERVER_ID", "server_id")):
                 v = l.get(field) or os.environ.get(env)
                 if v: args += ["-e", f"{env}={v}"]
+            if l.get("ca"): args += ["-e", f"EAP_CA=/secrets/{l['ca']}"]
         docker("rm", "-f", cname(k), check=False)   # already stopped gracefully above
         docker(*args, IMAGE)
         save_state(state)
         print(f"up  {k:28} :{port}  ({proto}  {l['country']} / {l['city']})")
     return {"started": [l["key"] for l in targets], "refused": refused}
 
-def save_config(filename, content, provider=None):
-    """Store an uploaded VPN config + a sidecar describing it. Returns the new target."""
+def _asset_lookup(assets):
+    """assets: a directory to read siblings from, or {filename: bytes}. Only plain file
+    names are honoured — a config cannot make us read /etc/shadow via `ca ../../x`."""
+    def lookup(name):
+        base = os.path.basename(name.replace("\\", "/"))
+        if not base or base.startswith("."): return None
+        if isinstance(assets, dict):
+            return assets.get(base)
+        if assets and os.path.isdir(assets):
+            fp = os.path.join(assets, base)
+            if os.path.isfile(fp) and os.path.getsize(fp) < 1_000_000:
+                return open(fp, "rb").read()
+        return None
+    return lookup
+
+def save_config(filename, content, provider=None, assets=None, meta=None):
+    """Store an uploaded VPN config + a sidecar describing it. Returns the new target.
+    OpenVPN files that point at ca.crt / ta.key / client.key get those inlined (from
+    `assets`), because the port container only ever sees this one file."""
     fn = re.sub(r"[^A-Za-z0-9._-]", "_", os.path.basename(filename))
+    content = content.replace("\r\n", "\n")
     proto = detect_protocol(content)
     if not proto:
         raise ValueError("Không nhận ra định dạng — cần file WireGuard (.conf) hoặc OpenVPN (.ovpn)")
+    if proto == "openvpn" and P.referenced_files(content):
+        content, missing = P.inline_files(content, _asset_lookup(assets))
+        if missing:
+            raise ValueError(f"{fn} cần thêm file: {', '.join(missing)} — kéo thả chúng cùng lúc "
+                             "với file .ovpn, hoặc kéo thả cả gói .zip của nhà cung cấp")
     if not fn.endswith((".conf", ".ovpn")):
         fn += ".conf" if proto == "wireguard" else ".ovpn"
     path = os.path.join(CONFIG_DIR, fn)
     with open(path, "w") as f: f.write(content)
     os.chmod(path, 0o600)
-    json.dump({"provider": provider or guess_provider(fn), "protocol": proto,
-               "country": guess_country(fn)},
-              open(path + ".meta.json", "w"))
+    hosts = [h for h, _, _ in P.parse_remotes(content)]
+    cc, city = P.guess_location(fn, hosts)
+    m = {"provider": provider or guess_provider(fn, content), "protocol": proto,
+         "country": cc, "needs_auth": proto == "openvpn" and P.needs_auth(content)}
+    if city: m["city"] = city
+    m.update(meta or {})
+    json.dump(m, open(path + ".meta.json", "w"))
     return next(t for t in config_targets() if t["config"] == fn)
+
+def write_items(items, replace_provider=None, replace_protocol=None):
+    """Write importer output as ordinary configs. Re-importing a provider replaces its old
+    generated files, except ones a port still uses (their key must keep working)."""
+    keep = {v.get("config") for v in load_state().values()}
+    names = set()
+    for it in items:
+        save_config(it["name"], it["content"], meta=it["meta"])
+        names.add(re.sub(r"[^A-Za-z0-9._-]", "_", it["name"]))
+    if replace_provider:
+        for t in config_targets():
+            if t["provider"] == replace_provider and t["config"] not in names and \
+               t["config"] not in keep and (not replace_protocol or t["protocol"] == replace_protocol):
+                meta_p = os.path.join(CONFIG_DIR, t["config"] + ".meta.json")
+                try: generated = json.load(open(meta_p)).get("preset")
+                except Exception: generated = None
+                if generated:              # never touch files the user dropped in by hand
+                    for f in (t["config"], t["config"] + ".meta.json"):
+                        try: os.remove(os.path.join(CONFIG_DIR, f))
+                        except OSError: pass
+    return len(items)
+
+def save_bundle(filename, data, provider=None):
+    """A provider's zip of .ovpn files (+ ca.crt/ta.key): one location per city."""
+    items = P.import_zip_bundle(data, provider)
+    if not items: raise ValueError("Không có cấu hình nào trong zip")
+    for it in items: it["meta"].pop("preset", None)     # user-supplied: never auto-pruned
+    write_items(items)
+    return items
+
+def import_preset(pid, proto=None, data=None):
+    """Fetch a provider's public server list and create its locations. data carries the
+    account: user/pass (OpenVPN, IKEv2), wg_key/wg_address or wg_conf (WireGuard),
+    template (Windscribe), per_city."""
+    data = data or {}
+    pre = P.preset(pid)
+    if not pre: raise ValueError(f"Không biết nhà cung cấp '{pid}'")
+    protos = [k for k, v in pre["protocols"].items() if v.get("how") in ("import", "template")]
+    proto = proto or (protos[0] if protos else None)
+    name, s = P.importer_for(pid, proto)
+    if not name:
+        raise ValueError(f"{pre['name']} / {proto}: không tự nạp được — "
+                         + ((s or {}).get("note") or "tải file cấu hình từ trang tài khoản rồi kéo thả"))
+    acct = {"pid": pre["id"], "template": data.get("template"), "wg_key": data.get("wg_key"),
+            "wg_address": data.get("wg_address"), "wg_dns": data.get("wg_dns")}
+    if data.get("wg_conf"):           # one downloaded .conf carries key + address
+        ident = P.wg_identity(data["wg_conf"])
+        acct.update(wg_key=acct["wg_key"] or ident["private_key"],
+                    wg_address=acct["wg_address"] or ident["address"])
+    user, pw = (data.get("user") or "").strip(), data.get("pass") or ""
+    if proto in ("openvpn", "ikev2") and not (user and pw) and not has_account(pre["id"]):
+        raise ValueError("Cần tên đăng nhập và mật khẩu dịch vụ — " + pre.get("credentials", ""))
+    items, eaps, ca_pem = P.run_importer(name, s, acct, data.get("per_city") or 1)
+    if proto == "openvpn" and user and pw:
+        set_account(pre["id"], user, pw)
+    if items:
+        write_items(items, replace_provider=pre["id"], replace_protocol=proto)
+    if eaps:
+        if not (user and pw):          # reuse the stored OpenVPN account for IKEv2
+            u, pw = open(auth_file(pre["id"])).read().split("\n")[:2]
+            user = u
+        ca = save_ca(pre["id"], ca_pem.encode()) if ca_pem else None
+        prov = load_providers(); keep = set(load_state())
+        prov["eap"] = [e for e in prov.get("eap", []) if e.get("name") != pre["id"]
+                       or "EAP-" + e["id"] in keep]
+        save_providers(prov)
+        for e in eaps:
+            add_eap({**e, "name": pre["id"], "user": user, "pass": pw, "ca_file": ca})
+    return {"provider": pre["id"], "protocol": proto, "locations": len(items) + len(eaps)}
 
 def delete_config(key):
     t = targets_index().get(key)
@@ -719,6 +966,12 @@ FAIL_REASONS = (
     ("FATAL:",                         "container không khởi động được"),
     ("Handshake did not complete",     "WireGuard không bắt tay được"),
     ("AUTH_FAILED",                    "sai tài khoản"),
+    ("AUTH_MISSING",                   "chưa nhập tài khoản OpenVPN cho nhà cung cấp này"),
+    ("EAP_FAILURE",                    "sai tài khoản IKEv2"),
+    ("constraint check failed",        "không tin được chứng chỉ máy chủ (CA / ID máy chủ)"),
+    ("no trusted RSA public key",      "không tin được chứng chỉ máy chủ (CA / ID máy chủ)"),
+    ("Options error",                  "file .ovpn có tuỳ chọn OpenVPN không hỗ trợ"),
+    ("TLS key negotiation failed",     "máy chủ OpenVPN không trả lời"),
 )
 
 def fail_reason(key):
@@ -863,6 +1116,8 @@ class H(http.server.BaseHTTPRequestHandler):
                  "inbox": os.environ.get("PF_INBOX_HOST", INBOX)}))
         if p == "/api/providers":
             return self._send(200, json.dumps({"providers": providers_list()}))
+        if p == "/api/presets":
+            return self._send(200, json.dumps({"presets": presets_list()}))
         if p == "/api/settings":
             st = load_settings()
             return self._send(200, json.dumps({
@@ -915,12 +1170,26 @@ class H(http.server.BaseHTTPRequestHandler):
             return self._send(200, json.dumps({"ok": True, **start(keys)}))
         elif p == "/api/autorotate": set_autorotate(keys, data.get("minutes", 0))
         elif p == "/api/upload":
+            if "files" in data:          # a batch: configs, zips and the ca/key files they use
+                return self._send(200, json.dumps({"ok": True, **upload_batch(data["files"],
+                                                                             data.get("provider"))}))
             try:
                 t = save_config(data.get("name", "config"), data.get("content", ""),
                                 data.get("provider"))
             except Exception as e:
                 return self._send(400, json.dumps({"error": str(e)}))
             return self._send(200, json.dumps({"ok": True, "target": t}))
+        elif p == "/api/preset/import":
+            try: r = import_preset(data.get("id"), data.get("protocol"), data)
+            except Exception as e:
+                return self._send(400, json.dumps({"error": str(e)}))
+            return self._send(200, json.dumps({"ok": True, **r}))
+        elif p == "/api/provider/auth":
+            try:
+                if data.get("delete"): delete_account(data.get("provider"))
+                else: set_account(data.get("provider"), data.get("user"), data.get("pass"))
+            except Exception as e:
+                return self._send(400, json.dumps({"error": str(e)}))
         elif p == "/api/delete-config":
             for k in keys: delete_config(k)
         elif p == "/api/settings":
@@ -996,6 +1265,71 @@ def serve():
     print(f"Proxy farm UI on http://{UI_BIND}:{UI_PORT}  (proxies bind {BIND}, image {IMAGE})", flush=True)
     httpd.serve_forever()
 
+# --- CLI helpers -------------------------------------------------------------
+def _ask(prompt, secret=False, env=None):
+    """Value from the environment (PF_USER, PF_PASS, …) or an interactive prompt, so the
+    same commands work in scripts and in `docker exec -it`."""
+    if env and os.environ.get(env): return os.environ[env]
+    if secret:
+        import getpass
+        return getpass.getpass(prompt)
+    return input(prompt)
+
+def cli_presets():
+    for p in presets_list():
+        protos = ", ".join(f"{x['protocol']}:{x['how']}" for x in p["protocols"]) or "-"
+        acct = " [đã có tài khoản]" if p["has_account"] else ""
+        print(f"{p['id']:14} {p['name']:26} {protos}{acct}")
+        if p["unsupported"]: print(f"{'':14} không hỗ trợ: {p['unsupported']}")
+    print("\nimport: farm.py import <id> [openvpn|wireguard|ikev2] [số máy chủ mỗi thành phố]")
+
+def cli_import(a):
+    if not a: return print("import <PRESET> [openvpn|wireguard|ikev2] [per-city]")
+    pre = P.preset(a[0])
+    if not pre: return print(f"không biết '{a[0]}' — xem: farm.py presets")
+    proto = a[1] if len(a) > 1 and not a[1].isdigit() else None
+    per_city = next((int(x) for x in a[1:] if x.isdigit()), 1)
+    name, s = P.importer_for(pre["id"], proto or next(
+        (k for k, v in pre["protocols"].items() if v.get("how") in ("import", "template")), ""))
+    proto = proto or next((k for k, v in pre["protocols"].items()
+                           if v.get("how") in ("import", "template")), None)
+    if not name:
+        return print(f"{pre['name']}{(' / ' + proto) if proto else ''}: không tự nạp được — "
+                     f"{(s or {}).get('note') or pre.get('unsupported') or 'tải file cấu hình từ trang tài khoản rồi dùng: farm.py add <file…>'}\n"
+                     f"{pre.get('credentials', '')}")
+    print(pre.get("credentials", ""))
+    d = {"per_city": per_city}
+    if proto in ("openvpn", "ikev2") and not has_account(pre["id"]):
+        d["user"] = _ask("Tên đăng nhập dịch vụ: ", env="PF_USER")
+        d["pass"] = _ask("Mật khẩu dịch vụ: ", True, env="PF_PASS")
+    if proto == "wireguard":
+        d["wg_key"] = _ask("WireGuard private key: ", True, env="PF_WG_KEY")
+        dflt = s.get("default_address", "")
+        d["wg_address"] = _ask(f"Địa chỉ (Address) [{dflt}]: ", env="PF_WG_ADDRESS") or dflt
+    if name == "windscribe":
+        d["template"] = open(_ask("Đường dẫn file .ovpn mẫu: ", env="PF_TEMPLATE")).read()
+    r = import_preset(pre["id"], proto, d)
+    print(f"đã nạp {r['locations']} vị trí {pre['name']} ({proto}). Bật bằng: farm.py up <KEY|mã nước>")
+
+def cli_auth(a):
+    if not a: return print("auth <PROVIDER> [USER]   (mật khẩu hỏi riêng, hoặc PF_PASS)")
+    user = a[1] if len(a) > 1 else _ask("Tên đăng nhập: ", env="PF_USER")
+    r = set_account(a[0], user, _ask("Mật khẩu: ", True, env="PF_PASS"))
+    print(f"đã lưu tài khoản OpenVPN cho {r['provider']} ({r['user']})")
+
+def cli_add(paths):
+    files = []
+    for fp in paths:
+        files.append({"name": os.path.basename(fp), "b64": base64.b64encode(open(fp, "rb").read()).decode()})
+        # ca.crt / ta.key next to a config come along automatically
+        d = os.path.dirname(os.path.abspath(fp))
+        for fn in os.listdir(d):
+            if fn.lower().endswith((".crt", ".key", ".pem")) and fn not in [f["name"] for f in files]:
+                files.append({"name": fn, "b64": base64.b64encode(open(os.path.join(d, fn), "rb").read()).decode()})
+    r = upload_batch(files)
+    for n in r["imported"]: print("nạp", n)
+    for e in r["errors"]: print("lỗi", e)
+
 if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else "serve"
     a = sys.argv[2:]
@@ -1004,4 +1338,6 @@ if __name__ == "__main__":
      "stop": lambda: stop(a), "start": lambda: start(a),
      "logs": lambda: print(container_logs(a[0])) if a else print("logs <KEY>"),
      "autorotate": lambda: set_autorotate(a[:-1], a[-1]) if len(a) > 1 else print("autorotate <KEY..> <minutes>"),
+     "presets": cli_presets, "import": lambda: cli_import(a), "auth": lambda: cli_auth(a),
+     "add": lambda: cli_add(a),
      }.get(cmd, lambda: print(__doc__))()
