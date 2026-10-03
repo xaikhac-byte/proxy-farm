@@ -270,5 +270,40 @@ class FarmGuessing(unittest.TestCase):
         self.assertFalse(f.has_account("myvpn"))
 
 
+class LowResource(unittest.TestCase):
+    """The farm-wide cap on ports switched on at once (low-resource mode)."""
+    @classmethod
+    def setUpClass(cls):
+        import farm
+        cls.farm = farm
+
+    def _quota(self, running, cap, wanted):
+        f = self.farm
+        saved = (f.running_containers, f.usage, f.load_settings, f.limit_for)
+        st = dict(f.load_settings(), max_active=cap)
+        try:
+            f.running_containers = lambda: {k: {"state": "running"} for k in running}
+            f.usage = lambda run=None: {"nordvpn": len(running)}
+            f.load_settings = lambda: st
+            f.limit_for = lambda key: 0
+            return f.over_quota([{"key": k, "provider": "nordvpn", "protocol": "openvpn"} for k in wanted])
+        finally:
+            f.running_containers, f.usage, f.load_settings, f.limit_for = saved
+
+    def test_cap_refuses_extra_ports(self):
+        ok, refused = self._quota(["A"], 3, ["A", "B", "C", "D"])
+        self.assertEqual([t["key"] for t in ok], ["A", "B", "C"])       # A was already on
+        self.assertEqual([(r["key"], r["provider"], r["limit"]) for r in refused], [("D", "_all", 3)])
+
+    def test_no_cap(self):
+        ok, refused = self._quota([], 0, ["A", "B", "C", "D"])
+        self.assertEqual(len(ok), 4); self.assertEqual(refused, [])
+
+    def test_defaults(self):
+        self.assertIn("low_resource", self.farm.DEFAULTS)
+        self.assertIn("max_active", self.farm.SETTABLE)
+        self.assertGreaterEqual(self.farm.DEFAULTS["port_mem_mb"], 32)
+
+
 if __name__ == "__main__":
     unittest.main()
