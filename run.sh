@@ -7,6 +7,7 @@
 #   PORT=8090           UI port on 127.0.0.1
 #   BIND=127.0.0.1      host interface the proxy ports listen on
 #   SCAN=~/Downloads    read-only folder the UI lists as import suggestions; SCAN= to turn off
+#   LOW_RESOURCE=1      weak PC: cap RAM/CPU per port, at most MAX_ACTIVE ports on (default 3)
 set -e
 HERE=$(cd "$(dirname "$0")" && pwd)
 cd "$HERE"
@@ -15,13 +16,15 @@ cd "$HERE"
 # wins over both.
 if [ -f .env ]; then
   while IFS='=' read -r k v; do
-    case "$k" in FARM|PORT|BIND|SCAN) eval "[ -n \"\${$k+x}\" ] || $k=\"\$v\"" ;; esac
+    case "$k" in FARM|PORT|BIND|SCAN|LOW_RESOURCE|MAX_ACTIVE) eval "[ -n \"\${$k+x}\" ] || $k=\"\$v\"" ;; esac
   done < .env
 fi
 FARM="${FARM:-$HOME/proxy-farm}"
 PORT="${PORT:-8090}"
 BIND="${BIND:-127.0.0.1}"
 SCAN="${SCAN-$HOME/Downloads}"
+LOW_RESOURCE="${LOW_RESOURCE:-0}"
+MAX_ACTIVE="${MAX_ACTIVE:-}"
 
 mkdir -p "$FARM/secrets" "$FARM/status" "$FARM/configs" "$FARM/data" "$FARM/inbox"
 chmod 700 "$FARM/secrets"
@@ -33,6 +36,8 @@ FARM=$FARM
 PORT=$PORT
 BIND=$BIND
 SCAN=$SCAN
+LOW_RESOURCE=$LOW_RESOURCE
+MAX_ACTIVE=$MAX_ACTIVE
 # Port containers are created by the manager, not by compose; don't warn about them.
 COMPOSE_IGNORE_ORPHANS=true
 EOF
